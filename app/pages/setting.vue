@@ -2,7 +2,10 @@
 import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { useSettingStore } from '@/core/stores/setting'
 import { getShortcutKey, useEventListener } from '@/core/hooks/event'
-import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, isEmpty, loadJsLib } from '@/core/utils'
+import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, isEmpty, isMobile, loadJsLib } from '@/core/utils'
+import { getLanSyncUrl, setLanSyncUrl } from '@/core/composables/useLanSync.ts'
+import useTheme from '@/core/hooks/theme.ts'
+import { useI18n } from 'vue-i18n'
 import { BaseButton, BaseInput, BasePage, Form, FormItem, type FormType, PopConfirm, Toast, UploadButton } from '@/base'
 import { useBaseStore } from '@/core/stores/base'
 import {
@@ -60,7 +63,27 @@ useSeoMeta({
   twitterDescription: title,
 })
 
-const tabIndex = $ref(Number(route?.query?.index ?? 0))
+let tabIndex = $ref(Number(route?.query?.index ?? 0))
+
+// ============ 手機版：清單 → 點進去看內容 ============
+const isMob = isMobile()
+// 手機版目前是否在內頁（從其他頁帶 index 進來時直接顯示內頁）
+let mobileShowContent = $ref(route?.query?.index != null)
+// 區網同步設定頁（只在手機清單出現）
+const LAN_SYNC_TAB_INDEX = 10
+let lanSyncUrlInput = $ref(getLanSyncUrl())
+const { toggleTheme, getTheme } = useTheme()
+const { locale, locales, setLocale } = useI18n()
+
+function selectTab(index: number) {
+  tabIndex = index
+  mobileShowContent = true
+}
+
+function saveLanSyncUrl() {
+  setLanSyncUrl(lanSyncUrlInput)
+  Toast.success('已儲存同步網址')
+}
 const settingStore = useSettingStore()
 const runtimeStore = useRuntimeStore()
 const store = useBaseStore()
@@ -569,51 +592,76 @@ function disable360() {
 
 <template>
   <BasePage>
-    <div class="setting text-md card flex flex-col" style="height: calc(100vh - 3rem)">
+    <div
+      class="setting text-md card flex flex-col"
+      :class="isMob && (mobileShowContent ? 'mobile-content' : 'mobile-list')"
+      style="height: calc(100vh - 3rem)"
+    >
       <div class="page-title text-align-center">{{ $t('setting') }}</div>
+      <!-- 手機版內頁的返回列 -->
+      <div class="mobile-back" @click="mobileShowContent = false">‹ {{ $t('setting') }}</div>
       <div class="flex flex-1 overflow-hidden gap-4">
         <div class="left">
           <div class="tabs">
-            <div class="tab" :class="tabIndex === 0 && 'active'" @click="tabIndex = 0">
+            <div class="tab" :class="tabIndex === 0 && 'active'" @click="selectTab(0)">
               <IconFluentSettings20Regular />
               <span>{{ $t('general_settings') }}</span>
             </div>
-            <div class="tab" :class="tabIndex === 1 && 'active'" @click="tabIndex = 1">
+            <div class="tab" :class="tabIndex === 1 && 'active'" @click="selectTab(1)">
               <IconFluentBot20Regular />
               <span>{{ $t('fsrs_settings') }}</span>
             </div>
-            <div class="tab" :class="tabIndex === 2 && 'active'" @click="tabIndex = 2">
+            <div class="tab" :class="tabIndex === 2 && 'active'" @click="selectTab(2)">
               <IconFluentTextUnderlineDouble20Regular />
               <span>{{ $t('word_settings') }}</span>
             </div>
-            <div class="tab" :class="tabIndex === 3 && 'active'" @click="tabIndex = 3">
+            <div class="tab" :class="tabIndex === 3 && 'active'" @click="selectTab(3)">
               <IconFluentBookLetter20Regular />
               <span>{{ $t('article_settings') }}</span>
             </div>
-            <div class="tab" :class="tabIndex === 4 && 'active'" @click="tabIndex = 4">
+            <div class="tab" :class="tabIndex === 4 && 'active'" @click="selectTab(4)">
               <IconClarityVolumeUpLine />
               <span>{{ $t('sound_settings') }}</span>
             </div>
-            <div class="tab" :class="tabIndex === 5 && 'active'" @click="tabIndex = 5">
+            <div class="tab" :class="tabIndex === 5 && 'active'" @click="selectTab(5)">
               <IconFluentDatabasePerson20Regular />
               <span>{{ $t('data_management') }}</span>
             </div>
 
-            <div class="tab" :class="tabIndex === 6 && 'active'" @click="tabIndex = 6">
+            <div class="tab" :class="tabIndex === 6 && 'active'" @click="selectTab(6)">
               <IconFluentCloudSync20Regular />
               <span>{{ $t('data_sync') }}</span>
               <div class="red-point" v-if="runtimeStore.isError"></div>
             </div>
-            <div class="tab" :class="tabIndex === 7 && 'active'" @click="tabIndex = 7">
+            <!-- 區網同步（手機版才顯示） -->
+            <div class="tab mobile-only" :class="tabIndex === 10 && 'active'" @click="selectTab(10)">
+              <IconFluentArrowSync20Regular />
+              <span>{{ $t('lan_sync_setting') }}</span>
+              <span class="tab-value">{{ lanSyncUrlInput.replace(/^https?:\/\//, '') }}</span>
+            </div>
+            <div class="tab desktop-only" :class="tabIndex === 7 && 'active'" @click="selectTab(7)">
               <IconFluentKeyboardLayoutFloat20Regular />
               <span>{{ $t('shortcut_settings') }}</span>
             </div>
-            <div class="tab" :class="tabIndex === 8 && 'active'" @click="tabIndex = 8">
+            <div class="tab desktop-only" :class="tabIndex === 8 && 'active'" @click="selectTab(8)">
               <IconFluentTextBulletListSquare20Regular />
               <span>{{ $t('update_log') }}</span>
               <!--              <div class="red-point" v-if="runtimeStore.isNew"></div>-->
             </div>
-            <div class="tab" :class="tabIndex === 9 && 'active'" @click="tabIndex = 9">
+            <!-- 語言、深色模式（手機版右上角圖示已隱藏，改放這裡） -->
+            <div class="tab mobile-only no-arrow">
+              <IconPhTranslate />
+              <span>{{ $t('language') }}</span>
+              <select class="tab-select" :value="locale" @change="setLocale(($event.target as HTMLSelectElement).value as any)">
+                <option v-for="item in locales" :key="item.code" :value="item.code">{{ item.name }}</option>
+              </select>
+            </div>
+            <div class="tab mobile-only no-arrow" @click="toggleTheme">
+              <IconFluentWeatherMoon16Regular />
+              <span>{{ $t('toggle_theme') }}</span>
+              <span class="tab-value">{{ getTheme() === 'dark' ? 'ON' : 'OFF' }}</span>
+            </div>
+            <div class="tab" :class="tabIndex === 9 && 'active'" @click="selectTab(9)">
               <IconFluentPerson20Regular />
               <span>{{ $t('about') }}</span>
             </div>
@@ -763,6 +811,14 @@ function disable360() {
 
           <!--          日志-->
           <Log v-if="tabIndex === 8" />
+
+          <div v-if="tabIndex === LAN_SYNC_TAB_INDEX">
+            <SettingItem :title="$t('lan_sync_setting')" :desc="$t('lan_sync_ask_url')" />
+            <div class="flex gap-space mt-2">
+              <BaseInput v-model="lanSyncUrlInput" class="flex-1" />
+              <BaseButton size="large" @click="saveLanSyncUrl">{{ $t('save') }}</BaseButton>
+            </div>
+          </div>
 
           <div v-if="tabIndex === 9" class="center flex-col">
             <About />
@@ -949,6 +1005,107 @@ function disable360() {
 
     .line {
       border-bottom: 1px solid #c4c3c3;
+    }
+  }
+}
+
+.mobile-back,
+.mobile-only {
+  display: none !important;
+}
+
+// ============ 手機版 ============
+@media (max-width: 768px) {
+  .setting {
+    height: auto !important;
+    min-height: calc(100vh - 8rem);
+
+    .mobile-only {
+      display: flex !important;
+    }
+
+    .desktop-only,
+    .col-line {
+      display: none !important;
+    }
+
+    .left {
+      width: 100%;
+      align-items: stretch;
+
+      .tabs {
+        width: 100%;
+        gap: 0;
+
+        .tab {
+          width: 100%;
+          padding: 0.85rem 0.3rem;
+          border-radius: 0;
+          border-bottom: 1px solid var(--color-line);
+          box-sizing: border-box;
+
+          &.active {
+            background: none;
+          }
+
+          // 清單右側的 ›
+          &::after {
+            content: '›';
+            margin-left: auto;
+            color: #9ca3af;
+            font-size: 1.2rem;
+          }
+
+          &.no-arrow::after {
+            content: none;
+          }
+
+          .tab-value,
+          .tab-select {
+            margin-left: auto;
+            color: #9ca3af;
+            font-size: 0.85rem;
+            max-width: 45%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .tab-value + * {
+            margin-left: 0;
+          }
+
+          .tab-select {
+            background: transparent;
+            border: none;
+            text-align: right;
+          }
+        }
+      }
+    }
+
+    // 清單模式：只顯示清單
+    &.mobile-list .content {
+      display: none;
+    }
+
+    // 內頁模式：只顯示內容，上方顯示返回
+    &.mobile-content {
+      .page-title,
+      .left {
+        display: none;
+      }
+
+      .mobile-back {
+        display: block !important;
+        color: var(--color-select-bg, #3b82f6);
+        padding: 0.3rem 0 0.8rem;
+        cursor: pointer;
+      }
+
+      .content {
+        padding-right: 0;
+      }
     }
   }
 }

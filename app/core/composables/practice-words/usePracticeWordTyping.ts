@@ -1,3 +1,4 @@
+import { isWholeWordJudgeType } from './practice-type.ts'
 import { computed, ref } from 'vue'
 import { WordPlayTrigger, WordPracticeType } from '../../types/enum.ts'
 import type { Word } from '../../types/types.ts'
@@ -73,7 +74,7 @@ export function usePracticeWordTyping(options: PracticeWordTypingOptions) {
     const settings = options.getSettings()
     let actual = input.value
     let target = options.getWord().word
-    if (options.getPracticeType() === WordPracticeType.Dictation) {
+    if (isWholeWordJudgeType(options.getPracticeType())) {
       actual = normalizeWord(actual)
       target = normalizeWord(target)
     }
@@ -194,7 +195,7 @@ export function usePracticeWordTyping(options: PracticeWordTypingOptions) {
     }
 
     inputLock.value = true
-    if (options.getPracticeType() === WordPracticeType.Dictation) {
+    if (isWholeWordJudgeType(options.getPracticeType())) {
       if (isSpace(event) && input.value && (input.value.length >= target.length || !target.includes(' '))) {
         if (isWordCorrect.value) {
           if (options.getShowWordResult()) return options.onComplete()
@@ -273,7 +274,7 @@ export function usePracticeWordTyping(options: PracticeWordTypingOptions) {
   function backspace(nextValue?: string) {
     options.playKeyboardAudio()
     inputLock.value = false
-    if (options.getPracticeType() === WordPracticeType.Dictation && options.getShowWordResult()) {
+    if (isWholeWordJudgeType(options.getPracticeType()) && options.getShowWordResult()) {
       input.value = wrong.value = ''
     } else if (wrong.value) {
       wrong.value = ''
@@ -295,7 +296,7 @@ export function usePracticeWordTyping(options: PracticeWordTypingOptions) {
     wordCompletedTime.value = 0
     pressNumber = 0
     options.resetWordPlayCount?.(options.getWord().word)
-    if (options.getPracticeType() !== WordPracticeType.Dictation) options.onPlay(trigger)
+    if (!isWholeWordJudgeType(options.getPracticeType())) options.onPlay(trigger)
   }
 
   function setWordTestResult(correct: boolean, word: string) {

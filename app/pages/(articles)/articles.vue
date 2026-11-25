@@ -223,8 +223,8 @@ const { data: recommendBookList, isFetching } = useFetch(resourceWrap(DICT_LIST.
         <Book v-else :is-add="true" @click="router.push('/book-list')" />
       </div>
       <div class="flex-1">
-        <div class="flex justify-between items-start">
-          <div class="flex items-center min-w-0">
+        <div class="flex justify-between items-start week-head">
+          <div class="flex items-center min-w-0 week-row">
             <div class="title mr-4 truncate">{{ $t('this_week_record') }}</div>
             <div class="flex gap-4 color-gray">
               <div
@@ -241,7 +241,7 @@ const { data: recommendBookList, isFetching } = useFetch(resourceWrap(DICT_LIST.
             <div class="color-link cursor-pointer" @click="router.push('/book-list')">{{ $t('change_book') }}</div>
           </div>
         </div>
-        <div class="flex flex-col sm:flex-row gap-3 items-center mt-3 gap-space w-full">
+        <div class="flex flex-col sm:flex-row gap-3 items-center mt-3 gap-space w-full article-stats">
           <div
             class="w-full sm:flex-1 rounded-xl p-4 box-border relative bg-[var(--bg-history)] border border-gray-200"
           >
@@ -261,7 +261,7 @@ const { data: recommendBookList, isFetching } = useFetch(resourceWrap(DICT_LIST.
             <div class="text-gray-500">{{ $t('total_study_time') }}</div>
           </div>
         </div>
-        <div class="flex gap-3 mt-3">
+        <div class="flex gap-3 mt-3 article-start">
           <Progress
             class="w-full md:w-auto"
             size="large"
@@ -355,6 +355,50 @@ const { data: recommendBookList, isFetching } = useFetch(resourceWrap(DICT_LIST.
 
   .txt {
     @apply color-gray-500;
+  }
+}
+
+// ============ 手機版 ============
+@media (max-width: 768px) {
+  // 「本週學習記錄」標題放上一行，週一到週日放下一行，避免標題被截成「本..」
+  .week-head {
+    flex-direction: column;
+    gap: 0.4rem;
+
+    .week-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.4rem;
+      width: 100%;
+
+      > div:last-child {
+        width: 100%;
+        justify-content: space-between;
+        gap: 0;
+      }
+    }
+  }
+
+  // 3 個統計固定並排
+  .article-stats {
+    flex-direction: row !important;
+    gap: 0.5rem !important;
+
+    > div {
+      flex: 1;
+      width: auto !important;
+      padding: 0.5rem 0.25rem !important;
+      text-align: center;
+
+      > div:last-child {
+        font-size: 0.75rem;
+      }
+    }
+  }
+
+  // 進度條與開始按鈕上下排
+  .article-start {
+    flex-direction: column;
   }
 }
 </style>

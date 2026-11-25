@@ -1,4 +1,5 @@
 /** Flow 配置的严格校验、存储，以及每个练习实例独享的运行时。 */
+import { useSettingStore } from '@/core/stores/setting.ts'
 import { shallowRef } from 'vue'
 import type { TaskWords, Word } from '@/core/types/types.ts'
 import { WordPracticeMode } from '@/core/types/enum.ts'
@@ -265,8 +266,20 @@ export function createPracticeFlowRuntime(initialConfig: PracticeFlowConfig = BU
     return getUserFlow(flowIdOrConfig) ?? resolveFlowConfigOrSystem(getFlowConfig(flowIdOrConfig))
   }
 
+  /** 使用者在單字設定關閉「例句填空」時，從流程移除 cloze 步驟（整個節點都是 cloze 時保留，避免空節點） */
+  function applyClozePreference(config: PracticeFlowConfig): PracticeFlowConfig {
+    if (useSettingStore().practiceCloze !== false) return config
+    return {
+      ...config,
+      nodes: config.nodes.map(node => {
+        const steps = node.steps.filter(step => step.templateId !== 'cloze')
+        return steps.length ? { ...node, steps } : node
+      }),
+    }
+  }
+
   function loadPracticeFlow(flowIdOrConfig: string | PracticeFlowConfig) {
-    activeFlowConfig.value = resolveFlowInput(flowIdOrConfig)
+    activeFlowConfig.value = applyClozePreference(resolveFlowInput(flowIdOrConfig))
     return activeFlowConfig.value
   }
 

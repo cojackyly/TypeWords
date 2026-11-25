@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isWholeWordJudgeType } from '@/core/composables/practice-words/practice-type.ts'
 import type { Word } from '@/core/types/types.ts'
 import { getDefaultWord } from '@/core/types/func.ts'
 import { WordPlayTrigger, WordPracticeType } from '@/core/types/enum.ts'
@@ -168,7 +169,7 @@ defineExpose({
     :class="wrong || (wholeInputAttempt && inputLock && !isWordCorrect) ? 'is-wrong' : ''"
   >
     <!-- 默写模式 -->
-    <div v-if="practiceType === WordPracticeType.Dictation">
+    <div v-if="isWholeWordJudgeType(practiceType)">
       <div
         class="letter text-align-center w-full inline-block"
         v-opacity:noAnim="!isWordMasked || showWordResult || showFullWord"

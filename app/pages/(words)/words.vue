@@ -62,6 +62,9 @@ import dayjs from 'dayjs'
 import { getActiveCustomFlowId, getUserFlow } from '@/core/composables/practice-words/practice-flow-runtime.ts'
 import { createStudyTask } from '@/core/composables/practice-words/study-task.ts'
 import LanSyncButton from '@/components/LanSyncButton.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t: i18nT } = useI18n()
 
 const store = useBaseStore()
 const settingStore = useSettingStore()
@@ -479,9 +482,26 @@ function toggleSelect(item) {
 }
 
 const progressTextLeft = $computed(() => {
-  if (store.sdict.complete) return '已学完，进入总复习阶段'
-  return '当前进度：已学' + store.currentStudyProgress + '%'
+  if (store.sdict.complete) return i18nT('completed_review_stage')
+  return i18nT('current_progress_learned', { percent: store.currentStudyProgress })
 })
+
+// 練習模式名稱改用多語系（WordPracticeModeNameMap 是寫死的簡體）
+const PRACTICE_MODE_I18N_KEY: Partial<Record<WordPracticeMode, string>> = {
+  [WordPracticeMode.System]: 'smart_learning',
+  [WordPracticeMode.Free]: 'free_practice',
+  [WordPracticeMode.IdentifyOnly]: 'identify',
+  [WordPracticeMode.DictationOnly]: 'dictation',
+  [WordPracticeMode.ListenOnly]: 'listen',
+  [WordPracticeMode.Shuffle]: 'random_review',
+  [WordPracticeMode.Review]: 'review',
+  [WordPracticeMode.ShuffleWordsTest]: 'random_words_test',
+}
+
+function practiceModeName(mode: WordPracticeMode) {
+  const key = PRACTICE_MODE_I18N_KEY[mode]
+  return key ? i18nT(key) : WordPracticeModeNameMap[mode]
+}
 
 function check(cb: Function) {
   if (!store.sdict.id) {
@@ -539,14 +559,13 @@ const { data: recommendDictList, isFetching } = useFetch(resourceWrap(DICT_LIST.
 
 const systemPracticeText = $computed(() => {
   if (settingStore.wordPracticeMode === WordPracticeMode.Free) {
-    return '开始学习'
-  } else if (settingStore.wordPracticeMode === WordPracticeMode.Custom) {
-    return isSaveData ? '继续自定义练习' : '开始自定义练习'
-  } else {
-    return isSaveData
-      ? '继续' + WordPracticeModeNameMap[settingStore.wordPracticeMode]
-      : '开始' + WordPracticeModeNameMap[settingStore.wordPracticeMode]
+    return i18nT('start_learning')
   }
+  const name =
+    settingStore.wordPracticeMode === WordPracticeMode.Custom
+      ? i18nT('custom_practice')
+      : practiceModeName(settingStore.wordPracticeMode)
+  return i18nT(isSaveData ? 'continue_mode' : 'start_mode', { name })
 })
 
 let isOldHost = $ref(false)
@@ -596,7 +615,7 @@ onUnmounted(() => {
 
             <div class="text-sm flex justify-between">
               <span>{{ progressTextLeft }}</span>
-              <span> {{ store.sdict?.lastLearnIndex }} / {{ store.sdict.length }} 词</span>
+              <span> {{ store.sdict?.lastLearnIndex }} / {{ store.sdict.length }} {{ $t('word_unit') }}</span>
             </div>
           </div>
           <div class="flex items-center mt-4 gap-4">
@@ -632,20 +651,20 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="flex-1 mt-4 md:mt-0" :class="!store.sdict.id && 'opacity-30 cursor-not-allowed'">
-        <div class="flex justify-between">
+        <div class="flex justify-between task-head">
           <div class="flex items-center gap-2">
             <div class="p-2 center rounded-full bg-white">
               <IconFluentStar20Filled class="text-lg color-amber" />
             </div>
-            <div class="text-xl font-bold">
+            <div class="text-xl font-bold break-keep">
               {{ isSaveData ? $t('last_task') : $t('today_task') }}
             </div>
-            <span class="color-link cursor-pointer" v-if="store.sdict.id" @click="showPracticeWordListDialog = true">{{
+            <span class="color-link cursor-pointer break-keep" v-if="store.sdict.id" @click="showPracticeWordListDialog = true">{{
               $t('word_list')
             }}</span>
             <!--            <span class="color-link cursor-pointer ml-2" @click="nav('/practice-flow-editor', {})">流程编排</span>-->
           </div>
-          <div class="flex gap-1 items-center" v-if="store.sdict.id">
+          <div class="flex gap-1 items-center daily-goal" v-if="store.sdict.id">
             {{ $t('daily_goal') }}
             <div style="color: #ac6ed1" class="bg-third px-2 h-10 flex center text-2xl rounded">
               {{ store.sdict.id ? store.sdict.perDayStudyNumber : 0 }}
@@ -669,7 +688,7 @@ onUnmounted(() => {
             <div class="num flex center">
               {{ practiceData?.taskWords?.review?.length }}
               <span class="text-base color-reverse-black" v-if="!practiceData?.taskWords?.review?.length"
-                >(暂无到期词)</span
+                >{{ $t('no_due_words') }}</span
               >
             </div>
             <div class="txt flex center gap-1">
@@ -682,12 +701,12 @@ onUnmounted(() => {
               </Tooltip>
             </div>
             <div class="center gap-2 mt-1 text-sm" v-if="!isSaveData && dueReviewCount === 0">
-              <span>加入随机复习</span>
+              <span>{{ $t('add_random_review') }}</span>
               <Switch :model-value="settingStore.autoAddRandomReviewWhenNoDue" @change="toggleAutoAddRandomReview" />
             </div>
           </div>
         </div>
-        <div class="flex items-end mt-4 gap-4 btn-no-margin">
+        <div class="flex items-end mt-4 gap-4 btn-no-margin task-actions">
           <OptionButton
             :class="settingStore.wordPracticeMode !== WordPracticeMode.Free ? 'flex-1 orange-btn' : 'primary-btn'"
           >
@@ -774,8 +793,8 @@ onUnmounted(() => {
 
     <div class="card flex flex-col md:flex-row gap-4 xl:gap-20 p-4 md:p-6">
       <div class="flex-1 flex flex-col gap-3 min-w-0">
-        <div class="title">统计</div>
-        <div class="flex gap-3 items-center w-full">
+        <div class="title">{{ $t('statistics_title') }}</div>
+        <div class="flex gap-3 items-center w-full stat2-row">
           <div class="stat2">
             <div class="num">{{ todayTotalSpend }}</div>
             <div class="txt">{{ $t('today_study_time') }}</div>
@@ -827,7 +846,7 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
-      <div class="flex gap-4 flex-wrap mt-4">
+      <div class="flex gap-4 flex-wrap mt-4 book-list">
         <Book
           :is-add="false"
           quantifier="词"
@@ -850,7 +869,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="flex gap-4 flex-wrap mt-4 min-h-50">
+      <div class="flex gap-4 flex-wrap mt-4 min-h-50 book-list book-list-recommend">
         <Book
           :is-add="false"
           quantifier="词"
@@ -931,6 +950,70 @@ onUnmounted(() => {
 
   .num {
     @apply text-2xl break-keep;
+  }
+}
+
+// ============ 手機版 ============
+@media (max-width: 768px) {
+  // 「今日任務」與「每日目標」分兩行，避免標題被擠成直排
+  .task-head {
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+
+    .daily-goal {
+      width: 100%;
+      justify-content: flex-end;
+      white-space: nowrap;
+    }
+  }
+
+  .stat {
+    .num {
+      @apply text-3xl;
+    }
+  }
+
+  // 開始學習滿版，自由練習放下一行，不會超出卡片
+  .task-actions {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+
+    > * {
+      width: 100%;
+      flex: 1 1 100%;
+    }
+
+    :deep(.base-button) {
+      width: 100%;
+    }
+  }
+
+  .stat2-row {
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .stat2 {
+    @apply py-2 px-1;
+
+    .num {
+      @apply text-xl;
+    }
+
+    .txt {
+      @apply text-xs text-center;
+    }
+  }
+
+  .book-list-recommend {
+    min-height: 0 !important;
+  }
+
+  .book-list {
+    gap: 0.5rem;
+    // 外層有最小高度時，不要把清單列撐高
+    align-items: flex-start;
+    align-content: flex-start;
   }
 }
 </style>

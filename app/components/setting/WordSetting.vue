@@ -53,6 +53,9 @@ const settingStore = useSettingStore()
 
     <div class="line"></div>
     <SettingItem :mainTitle="`例句设置`" />
+    <SettingItem :title="$t('practice_cloze')" :desc="$t('practice_cloze_desc')">
+      <Switch v-model="settingStore.practiceCloze" />
+    </SettingItem>
     <SettingItem :title="$t('practice_sentence')">
       <Switch v-model="settingStore.practiceSentence" />
     </SettingItem>

@@ -126,6 +126,7 @@ export enum WordPracticeType {
   Identify,
   Listen,
   Dictation,
+  Cloze, // 例句填空：在例句的空格打出單字
 }
 
 //练习类型

@@ -119,7 +119,7 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
           // 手機用 password 類型：iOS 會強制英文 ASCII 鍵盤，不會出現注音等中文輸入法
           // （text / email / url 類型都擋不住，2026-11-25 iOS 27 模擬器實測）
           input.type = isMobile() ? 'password' : 'text'
-          input.autofocus = true
+          // 不使用 autofocus：設定頁等也會建立這個輸入框，插入時自動聚焦會讓手機跳出鍵盤；練習頁由下方的延遲 focus 處理
           input.autocomplete = 'off'
           input.autocapitalize = 'off'
           input.autocorrect = false
@@ -142,7 +142,8 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
           document.body.appendChild(input)
         }
         setTimeout(() => {
-          input.focus()
+          // 只在練習頁叫出鍵盤；設定頁等也會用到鍵盤監聽，不能一進頁面就跳出鍵盤
+          if (window.location.pathname.includes('/practice')) input.focus()
         }, 100)
         return input
       }

@@ -37,6 +37,9 @@ import { useMobileKeyboard } from '@/core/hooks/mobileKeyboard.ts'
 import { vibrateOnTypo } from '@/core/hooks/haptics.ts'
 import { usePracticeStore } from '@/core/stores/practice.ts'
 import { isMobile } from '@/core/utils'
+import { findClozeSentences } from '@/core/composables/practice-words/practice-cloze.ts'
+import { isWholeWordJudgeType } from '@/core/composables/practice-words/practice-type.ts'
+import { useTTsPlayAudio } from '@/core/hooks/sound.ts'
 
 const { t: $t } = useI18n()
 
@@ -83,6 +86,7 @@ function continueMobileTyping() {
   if (statStore.timerPaused) statStore.resumeTimer()
   mobileKeyboard.open()
 }
+
 
 // ============ 音频 ============
 const playWordAudio = usePlayWordAudio()
@@ -143,6 +147,64 @@ function onSentencePracticeComplete() {
   isTypingWord = true
   emit('complete')
 }
+
+// ============ 例句填空 ============
+const isCloze = computed(() => props.practiceType === WordPracticeType.Cloze)
+const clozeSentences = computed(() => (isCloze.value ? findClozeSentences(props.word) : []))
+// 目前使用第幾句；每個字從不同句開始，「換一句」往下輪
+let clozeIndex = $ref(0)
+let clozeHintUsed = $ref(false)
+const clozeSentence = computed(() => {
+  const list = clozeSentences.value
+  return list.length ? list[clozeIndex % list.length] : null
+})
+const ttsPlay = useTTsPlayAudio()
+// 答對時顯示的中文：只取第一個詞性，太長就截斷
+const CLOZE_TRANS_MAX_LENGTH = 30
+const clozeShortTrans = computed(() => {
+  const cn = props.word.trans?.[0]?.cn ?? ''
+  return cn.length > CLOZE_TRANS_MAX_LENGTH ? cn.slice(0, CLOZE_TRANS_MAX_LENGTH) + '…' : cn
+})
+
+function resetCloze() {
+  clozeHintUsed = false
+  clozeIndex = props.word.word.length % Math.max(1, clozeSentences.value.length)
+}
+
+function nextClozeSentence() {
+  clozeIndex++
+}
+
+function playClozeSentence() {
+  const text = clozeSentence.value?.text
+  if (text) ttsPlay(text, { volume: settingStore.sentenceSoundVolume / 100, rate: settingStore.sentenceSoundSpeed })
+}
+
+// 提示首字母：用了算一次錯
+function showClozeHint() {
+  if (clozeHintUsed) return
+  clozeHintUsed = true
+  emit('wrong')
+}
+
+watch(
+  [() => props.word, () => props.practiceType],
+  () => {
+    if (!isCloze.value) return
+    resetCloze()
+    // 沒有可以挖空的例句：自動跳過這一步，不算錯
+    if (!clozeSentences.value.length) emit('complete')
+  },
+  { immediate: true }
+)
+
+// 答對時播放整句發音
+watch(
+  () => showWordResult,
+  shown => {
+    if (shown && isCloze.value && typingCoreRef?.isWordRight()) playClozeSentence()
+  }
+)
 
 // ============ 单词操作 ============
 function checkIsWrong() {
@@ -265,7 +327,7 @@ const notice = $computed(() => {
       text = '按空格键继续'
       show = true
     }
-  } else if (props.practiceType === WordPracticeType.Dictation) {
+  } else if (isWholeWordJudgeType(props.practiceType)) {
     text = showWordResult
       ? typingCoreRef?.isWordRight()
         ? '按空格键继续'
@@ -343,6 +405,49 @@ useEvents([
     v-if="word.word.length"
   >
     <div class="flex flex-col items-center">
+      <!-- 例句填空：中文句子＋挖空的英文例句 -->
+      <div class="cloze-panel" v-if="isCloze && clozeSentence">
+        <div class="cloze-cn">{{ clozeSentence.cn }}</div>
+        <div class="cloze-sentence">
+          <span>{{ clozeSentence.before }}</span>
+          <span class="cloze-gap" :class="showWordResult && (typingCoreRef?.isWordRight() ? 'ok' : 'bad')">
+            <WordTypingCore
+              ref="typingCoreRef"
+              :word="word"
+              :active="isTypingWord && !editingNote"
+              :practiceType="practiceType"
+              :isWordMasked="effective.isWordMasked"
+              v-model:showWordResult="showWordResult"
+              :showFullWord="showFullWord"
+              :wordFontSize="24"
+              @play="playWord"
+              @complete="onTypingCoreComplete"
+              @wrong="onTypingCoreWrong"
+            />
+          </span>
+          <span>{{ clozeSentence.after }}</span>
+        </div>
+        <div class="cloze-meta">
+          {{ word.trans?.[0]?.pos ? word.trans[0].pos + ' · ' : '' }}{{ word.word.length }} 個字母
+          <template v-if="clozeHintUsed"> · 首字母 {{ word.word[0] }}</template>
+          · 句子 {{ (clozeIndex % clozeSentences.length) + 1 }} / {{ clozeSentences.length }}
+        </div>
+        <div class="cloze-actions" data-no-refocus @pointerdown.prevent>
+          <button class="mobile-chip" @click="playClozeSentence">🔊 聽句子</button>
+          <button class="mobile-chip" @click="showClozeHint">💡 提示首字母</button>
+          <button class="mobile-chip" @click="nextClozeSentence">⇆ 換一句</button>
+          <button class="mobile-chip" @click="emit('skip')">⏭ {{ $t('skip_word') }}</button>
+        </div>
+        <div class="cloze-result" v-if="showWordResult" :class="typingCoreRef?.isWordRight() ? 'ok' : 'bad'">
+          <template v-if="typingCoreRef?.isWordRight()">
+            ✓ <b>{{ word.word }}</b> {{ word.phonetic1 ? '/' + word.phonetic1 + '/' : '' }}
+            {{ word.trans?.[0]?.pos }} {{ clozeShortTrans }}
+          </template>
+          <template v-else>✗ 正確答案：<b>{{ word.word }}</b></template>
+        </div>
+      </div>
+
+      <template v-if="!isCloze">
       <!-- 音标 + 发音按钮（通过 slot 传入 VolumeIcon） -->
       <div class="flex gap-1 mt-10 md:mt-30">
         <div
@@ -393,8 +498,10 @@ useEvents([
         </div>
       </Tooltip>
 
-      <!-- 手機版：打字時的按鈕列 -->
-      <div class="mobile-actions" v-if="isMob && mobileKeyboard.isOpen.value" data-no-refocus @pointerdown.prevent>
+      </template>
+
+      <!-- 手機版：打字時的按鈕列（例句填空有自己的按鈕列） -->
+      <div class="mobile-actions" v-if="isMob && mobileKeyboard.isOpen.value && !isCloze" data-no-refocus @pointerdown.prevent>
         <button class="mobile-chip" @click="onVolumeIconClick">
           <IconFluentSpeaker20Regular /> {{ $t('mobile_pronounce') }}
         </button>
@@ -407,7 +514,7 @@ useEvents([
       </div>
 
       <!-- 操作按钮行 -->
-      <div class="mt-1 flex gap-4 desktop-actions">
+      <div class="mt-1 flex gap-4 desktop-actions" v-if="!isCloze">
         <BaseIcon
           @click="emit('toggleSimple')"
           :title="
@@ -470,7 +577,7 @@ useEvents([
       </template>
 
       <!-- 提示 Toast -->
-      <div class="center mt-3" v-if="notice.show && settingStore.showUsageTips">
+      <div class="center mt-3" v-if="notice.show && settingStore.showUsageTips && !isCloze">
         <ToastComponent
           :duration="0"
           confirm
@@ -500,6 +607,7 @@ useEvents([
       <!-- WordMetaPanel: 翻译 + 例句 + 短语 + 词源 等展示 -->
       <!--      不要加key，里面有个只显示一次的变量-->
       <WordMetaPanel
+        v-if="!isCloze"
         ref="wordMetaPanelRef"
         :word="word"
         @complete="onSentencePracticeComplete"
@@ -666,5 +774,101 @@ useEvents([
 .mobile-detail {
   overflow-y: auto;
   padding-bottom: 6rem;
+}
+
+// ============ 例句填空 ============
+.cloze-panel {
+  width: 100%;
+  max-width: 44rem;
+  margin-top: 2.5rem;
+  text-align: center;
+
+  .cloze-cn {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--color-font-1);
+  }
+
+  .cloze-sentence {
+    font-family: var(--en-article-family);
+    font-size: 1.4rem;
+    line-height: 2;
+    margin-top: 0.8rem;
+  }
+
+  .cloze-gap {
+    display: inline-block;
+    min-width: 6rem;
+    border-bottom: 3px solid var(--color-select-bg, #3b82f6);
+    padding: 0 0.3rem;
+    letter-spacing: 0.1rem;
+
+    &.ok {
+      border-color: rgb(22, 163, 74);
+    }
+
+    &.bad {
+      border-color: rgb(220, 38, 38);
+    }
+
+    // 例句填空只顯示輸入，不顯示默寫的整字與底線框
+    :deep(.typing-core) {
+      display: inline-block;
+
+      .letter {
+        display: none;
+      }
+
+      .dictation {
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: none;
+        display: inline;
+      }
+    }
+  }
+
+  .cloze-meta {
+    font-size: 0.85rem;
+    color: var(--color-font-3, #888);
+    margin-top: 0.6rem;
+  }
+
+  .cloze-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .cloze-result {
+    margin-top: 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: 0.6rem;
+    font-size: 0.95rem;
+
+    &.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    &.bad {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .cloze-panel {
+    margin-top: 1rem;
+
+    .cloze-sentence {
+      font-size: 1.2rem;
+      line-height: 1.8;
+    }
+  }
 }
 </style>

@@ -64,6 +64,7 @@ export interface SettingState {
   mobileNavCollapsed: boolean // 移动端底部导航栏收缩状态
   ignoreSymbol: boolean // 过滤符号
   practiceSentence: boolean // 练习例句
+  practiceCloze: boolean // 學習流程加入「例句填空」
   autoPlayFirstSentence: boolean // 单词发音结束后自动播放首条例句
 
   fsrsEasyLimit: number // 小于等于fsrsEasyLimit的卡片会评估为Easy
@@ -138,6 +139,7 @@ export const getDefaultSettingState = (): SettingState => ({
   mobileNavCollapsed: false,
   ignoreSymbol: true,
   practiceSentence: false,
+  practiceCloze: true,
   autoPlayFirstSentence: true,
   fsrsEasyLimit: 0,
   fsrsGoodLimit: 3,
