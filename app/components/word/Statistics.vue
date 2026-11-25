@@ -12,6 +12,7 @@ import { defineAsyncComponent, inject, watch } from 'vue'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import { msToHourMinute } from '@/core/utils'
 import { closeMobileKeyboard } from '@/core/hooks/mobileKeyboard.ts'
+import LanSyncButton from '@/components/LanSyncButton.vue'
 import ChannelIcons from '@/components/channel-icons/ChannelIcons.vue'
 import { useI18n } from 'vue-i18n'
 
@@ -201,6 +202,8 @@ const encouragementText = $computed(() => {
           </div>
           <!-- Action Buttons -->
           <div class="summary-actions flex justify-center flex-wrap">
+            <!-- 練完順手同步，減少忘記同步 -->
+            <LanSyncButton block class="summary-sync" />
             <BaseButton
               :keyboard="settingStore.shortcutKeyMap[ShortcutKey.RepeatChapter]"
               @click="options(ShortcutKey.RepeatChapter)"

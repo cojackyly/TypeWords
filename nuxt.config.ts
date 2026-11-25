@@ -141,6 +141,8 @@ export default defineNuxtConfig({
       passwordRsaPublicKey: process.env.VITE_PASSWORD_RSA_PUBLIC_KEY || '',
       latestCommitHash: latestCommitHash + (process.env.NODE_ENV === 'production' ? '' : ' (dev)'),
       latestCommitTime: latestCommitTime,
+      // iOS App 預設的區網同步網址（Mac 的 Bonjour 名稱），由 pnpm generate:app 帶入
+      lanSyncUrl: process.env.TYPEWORDS_SYNC_URL || '',
     },
   },
   // 构建配置

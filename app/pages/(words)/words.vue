@@ -61,6 +61,7 @@ import {
 import dayjs from 'dayjs'
 import { getActiveCustomFlowId, getUserFlow } from '@/core/composables/practice-words/practice-flow-runtime.ts'
 import { createStudyTask } from '@/core/composables/practice-words/study-task.ts'
+import LanSyncButton from '@/components/LanSyncButton.vue'
 
 const store = useBaseStore()
 const settingStore = useSettingStore()
@@ -575,6 +576,8 @@ onUnmounted(() => {
           <div @click="goDictDetail(store.sdict)" class="text-2xl font-bold cursor-pointer">
             {{ store.sdict.name || $t('no_dict_selected') }}
           </div>
+          <!-- 區網同步：和 Mac 上的同步服務交換學習進度 -->
+          <LanSyncButton class="ml-auto self-center" />
         </div>
 
         <template v-if="store.sdict.id">

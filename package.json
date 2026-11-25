@@ -6,7 +6,8 @@
     "start": "nuxt dev",
     "build": "nuxt build",
     "generate": "nuxt generate",
-    "generate:app": "TYPEWORDS_APP=1 nuxt generate",
+    "generate:app": "TYPEWORDS_APP=1 TYPEWORDS_SYNC_URL=http://$(scutil --get LocalHostName).local:8790 nuxt generate",
+    "sync-server": "pnpm generate:app && node sync-server/server.mjs",
     "preview": "nuxt preview",
     "i18n:write": "gulp i18nWrite",
     "test": ""

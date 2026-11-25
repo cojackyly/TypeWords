@@ -46,6 +46,7 @@ type RemoteDataRow = RemoteMetaRow & {
 }
 
 type LocalPersistMeta = {
+  val?: unknown
   updated_at?: string
   version?: number
 }
@@ -59,14 +60,14 @@ type SaveLocalAndSyncOptions = {
 
 const DICT_SYNC_BLOCK_REASON = '检测到自定义文章里面有自定义音频，无法使用同步功能'
 
-const ALL_SYNC_TYPES: SyncDataType[] = [
+export const ALL_SYNC_TYPES: SyncDataType[] = [
   SyncDataType.dict,
   SyncDataType.setting,
   SyncDataType.practice_word,
   SyncDataType.practice_article,
 ]
 
-function getDataVersion(type: SyncDataType): number {
+export function getDataVersion(type: SyncDataType): number {
   switch (type) {
     case SyncDataType.dict:
       return SAVE_DICT_KEY.version
@@ -89,7 +90,7 @@ function getSyncClient(client?: SupabaseClient | null): SupabaseClient | null {
   return Supabase.getInstance() as SupabaseClient
 }
 
-async function getLocalPersistMeta(type: SyncDataType): Promise<LocalPersistMeta | null> {
+export async function getLocalPersistMeta(type: SyncDataType): Promise<LocalPersistMeta | null> {
   if (type === SyncDataType.practice_word) {
     return await getPracticeWordCacheLocalWithMeta()
   }
@@ -229,7 +230,7 @@ async function upsertServerDatas(rows: RemoteDataRow[], client?: SupabaseClient 
   }
 }
 
-async function applyRemoteDataByType(
+export async function applyRemoteDataByType(
   type: SyncDataType,
   row: RemoteDataRow,
   store: ReturnType<typeof useBaseStore>,
