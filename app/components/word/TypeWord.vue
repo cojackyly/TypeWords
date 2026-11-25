@@ -21,7 +21,7 @@ import { useSettingStore } from '@/core/stores/setting.ts'
 import { usePlayWordAudio } from '@/core/hooks/sound.ts'
 import { useInjectedDisplayPolicy } from '@/core/composables/practice-words/usePracticeDisplayPolicy.ts'
 import { EventKey, useEvents } from '@/core/utils/eventBus.ts'
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import WordLookupPopover from '@/components/word/WordLookupPopover.vue'
 import { BaseButton, BaseIcon, Textarea, Toast, ToastComponent, Tooltip, VolumeIcon } from '@/base'
 import { useI18n } from 'vue-i18n'
@@ -40,6 +40,18 @@ import { isMobile } from '@/core/utils'
 import { findClozeSentences } from '@/core/composables/practice-words/practice-cloze.ts'
 import { isWholeWordJudgeType } from '@/core/composables/practice-words/practice-type.ts'
 import { useTTsPlayAudio } from '@/core/hooks/sound.ts'
+import PalacePlacePanel from './PalacePlacePanel.vue'
+import PalaceSceneCard from './PalaceSceneCard.vue'
+import {
+  assignByOrder,
+  getLocusScene,
+  getWordImage,
+  type PalaceSlotItem,
+  getPalaceKey,
+  makePalaceBatch,
+  WORDS_PER_LOCUS,
+} from '@/core/composables/practice-words/practice-palace.ts'
+import type { PracticeData } from '@/core/composables/practice-words/practice-word-session.ts'
 
 const { t: $t } = useI18n()
 
@@ -74,7 +86,11 @@ const statStore = usePracticeStore()
 const isMob = isMobile()
 const mobileKeyboard = useMobileKeyboard()
 const mobileDetail = computed(
-  () => isMob && !mobileKeyboard.isOpen.value && props.practiceType !== WordPracticeType.Identify
+  () =>
+    isMob &&
+    !mobileKeyboard.isOpen.value &&
+    props.practiceType !== WordPracticeType.Identify &&
+    props.practiceType !== WordPracticeType.PalacePlace
 )
 
 function enterMobileDetail() {
@@ -205,6 +221,104 @@ watch(
     if (shown && isCloze.value && typingCoreRef?.isWordRight()) playClozeSentence()
   }
 )
+
+// ============ 記憶宮殿 ============
+const isPalacePlace = computed(() => props.practiceType === WordPracticeType.PalacePlace)
+const isPalaceRecall = computed(() => props.practiceType === WordPracticeType.PalaceRecall)
+// 例句填空、記憶宮殿都有自己的畫面，不顯示一般練習的單字區與按鈕
+const isCustomPanel = computed(() => isCloze.value || isPalacePlace.value || isPalaceRecall.value)
+const practiceData = inject<PracticeData | undefined>('practiceData', undefined)
+
+/** 目前單字在宮殿的位置：放置步驟依順序重新分配並記住；回想步驟讀記住的位置 */
+const palaceAssignment = computed(() => {
+  if (!isPalacePlace.value && !isPalaceRecall.value) return null
+  const key = getPalaceKey(props.word)
+  const saved = settingStore.palaceAssignments?.[key]
+  if (isPalaceRecall.value && saved) return saved
+  return assignByOrder(
+    settingStore.palaces,
+    settingStore.activePalaceId,
+    practiceData?.index ?? 0,
+    makePalaceBatch(store.sdict.id)
+  )
+})
+const palaceInfo = computed(() => {
+  const a = palaceAssignment.value
+  if (!a) return null
+  const palace = settingStore.palaces.find(p => p.id === a.palaceId) ?? settingStore.palaces[0]
+  return {
+    ...a,
+    palace,
+    locusName: palace?.loci[a.locus] ?? `位置 ${a.locus + 1}`,
+  }
+})
+const palaceScene = computed(() => getLocusScene(palaceInfo.value?.palace, palaceInfo.value?.locus ?? 0))
+
+/**
+ * 場景卡上的兩格：目前這個字＋同一位置的另一個字。
+ * 另一格依練習順序推算：前一個字（已看過／答過）變淡，後一個字顯示問號。
+ */
+const palaceSlots = computed<(PalaceSlotItem | null)[]>(() => {
+  const info = palaceInfo.value
+  if (!info) return []
+  const slots: (PalaceSlotItem | null)[] = Array(WORDS_PER_LOCUS).fill(null)
+  slots[info.slot] = {
+    image: getWordImage(props.word),
+    word: props.word.word,
+    state: isPalaceRecall.value && !showWordResult ? 'blank' : 'active',
+  }
+  const words = practiceData?.words ?? []
+  const index = practiceData?.index ?? 0
+  for (let slot = 0; slot < WORDS_PER_LOCUS; slot++) {
+    if (slot === info.slot) continue
+    // 放置與回想都照路線順序、不打亂，所以同一位置的另一個字就在相鄰位置
+    const other: Word | undefined = words[index + (slot - info.slot)]
+    if (!other) continue
+    slots[slot] = { image: getWordImage(other), word: other.word, state: slot < info.slot ? 'dim' : 'mystery' }
+  }
+  return slots
+})
+let palaceHintUsed = $ref(false)
+// 晚於 event.ts 的自動聚焦（100ms）再收起鍵盤
+const PALACE_KEYBOARD_CLOSE_DELAY_MS = 400
+
+// 放置步驟：把分配結果記住，回想與複習時沿用
+watch(
+  [() => props.word, isPalacePlace],
+  () => {
+    palaceHintUsed = false
+    if (!isPalacePlace.value || !palaceAssignment.value) return
+    if (!settingStore.palaceAssignments) settingStore.palaceAssignments = {}
+    const assignments = settingStore.palaceAssignments
+    // 切換單字的瞬間 props.word 可能是空白預設值：不能放進宮殿，否則會把同一格的真單字擠掉
+    delete assignments['']
+    if (!props.word.word.trim()) return
+    const next = palaceAssignment.value
+    const key = getPalaceKey(props.word)
+    // 同一批次的同一格只放一個字：重新開始學習時，舊的字從這一格移走
+    for (const [k, a] of Object.entries(assignments)) {
+      if (k !== key && a.batch === next.batch && a.palaceId === next.palaceId && a.locus === next.locus && a.slot === next.slot) {
+        delete assignments[k]
+      }
+    }
+    assignments[key] = { ...next }
+    // 放置不用打字：收起鍵盤。練習頁開始時會延遲叫出鍵盤（event.ts），所以晚一點再收一次
+    mobileKeyboard.close()
+    setTimeout(() => isPalacePlace.value && mobileKeyboard.close(), PALACE_KEYBOARD_CLOSE_DELAY_MS)
+  },
+  { immediate: true }
+)
+
+function palacePlaceNext() {
+  if (isPalacePlace.value) emit('complete')
+}
+
+// 回想時看中文：顯示中文意思，用了算一次錯
+function showPalaceHint() {
+  if (palaceHintUsed) return
+  palaceHintUsed = true
+  emit('wrong')
+}
 
 // ============ 单词操作 ============
 function checkIsWrong() {
@@ -394,6 +508,13 @@ useEvents([
   [ShortcutKey.ToggleCollect, collect],
   [ShortcutKey.CollectToDict, () => openCollectPicker({ currentTarget: collectAnchorRef.value } as any)],
   [ShortcutKey.PlayWordPronunciation, play],
+  // 宮殿放置：空白鍵進下一個
+  [
+    EventKey.onTyping,
+    (e: KeyboardEvent) => {
+      if (isPalacePlace.value && (e.code === 'Space' || e.key === ' ')) palacePlaceNext()
+    },
+  ],
 ])
 </script>
 
@@ -401,10 +522,71 @@ useEvents([
   <div
     class="typing-word"
     :class="{ 'mobile-typing': isMob && mobileKeyboard.isOpen.value, 'mobile-detail': mobileDetail }"
-    :data-no-refocus="mobileDetail ? '' : undefined"
+    :data-no-refocus="mobileDetail || isPalacePlace ? '' : undefined"
     v-if="word.word.length"
   >
     <div class="flex flex-col items-center">
+      <!-- 記憶宮殿：放置（只看不打） -->
+      <PalacePlacePanel
+        v-if="isPalacePlace && palaceInfo"
+        :word="word"
+        :scene="palaceScene"
+        :locus-name="palaceInfo.locusName"
+        :locus-index="palaceInfo.locus"
+        :locus-count="palaceInfo.palace?.loci.length ?? 0"
+        :slots="palaceSlots"
+        @next="palacePlaceNext"
+        @play="onVolumeIconClick"
+      />
+
+      <!-- 記憶宮殿：回想（只給位置，打出單字） -->
+      <div class="palace-recall" v-if="isPalaceRecall && palaceInfo">
+        <div class="palace-route">
+          <span
+            v-for="i in palaceInfo.palace?.loci.length ?? 0"
+            :key="i"
+            :class="i - 1 < palaceInfo.locus ? 'done' : i - 1 === palaceInfo.locus ? 'on' : ''"
+          ></span>
+        </div>
+        <PalaceSceneCard
+          class="mt-3 palace-recall-scene"
+          :scene="palaceScene"
+          :locus-name="palaceInfo.locusName"
+          :locus-index="palaceInfo.locus"
+          :slots="palaceSlots"
+        />
+        <div class="palace-recall-q">跳動的圖是哪個字？（{{ word.word.length }} 個字母）</div>
+        <div class="cloze-gap palace-gap" :class="showWordResult && (typingCoreRef?.isWordRight() ? 'ok' : 'bad')">
+          <WordTypingCore
+            ref="typingCoreRef"
+            :word="word"
+            :active="isTypingWord && !editingNote"
+            :practiceType="practiceType"
+            :isWordMasked="effective.isWordMasked"
+            v-model:showWordResult="showWordResult"
+            :showFullWord="showFullWord"
+            :wordFontSize="26"
+            @play="playWord"
+            @complete="onTypingCoreComplete"
+            @wrong="onTypingCoreWrong"
+          />
+        </div>
+        <div class="palace-hint" v-if="palaceHintUsed && !showWordResult">
+          {{ word.trans?.[0]?.pos }} {{ clozeShortTrans }}
+        </div>
+        <div class="cloze-actions" data-no-refocus @pointerdown.prevent>
+          <button class="mobile-chip" @click="showPalaceHint">💬 看中文</button>
+          <button class="mobile-chip" @click="onVolumeIconClick">🔊 發音</button>
+          <button class="mobile-chip" @click="emit('skip')">⏭ {{ $t('skip_word') }}</button>
+        </div>
+        <div class="cloze-result" v-if="showWordResult" :class="typingCoreRef?.isWordRight() ? 'ok' : 'bad'">
+          <template v-if="typingCoreRef?.isWordRight()">
+            ✓ <b>{{ word.word }}</b> {{ word.trans?.[0]?.pos }} {{ clozeShortTrans }}
+          </template>
+          <template v-else>✗ 正確答案：<b>{{ word.word }}</b>　{{ word.trans?.[0]?.pos }} {{ clozeShortTrans }}</template>
+        </div>
+      </div>
+
       <!-- 例句填空：中文句子＋挖空的英文例句 -->
       <div class="cloze-panel" v-if="isCloze && clozeSentence">
         <div class="cloze-cn">{{ clozeSentence.cn }}</div>
@@ -447,7 +629,7 @@ useEvents([
         </div>
       </div>
 
-      <template v-if="!isCloze">
+      <template v-if="!isCustomPanel">
       <!-- 音标 + 发音按钮（通过 slot 传入 VolumeIcon） -->
       <div class="flex gap-1 mt-10 md:mt-30">
         <div
@@ -501,7 +683,7 @@ useEvents([
       </template>
 
       <!-- 手機版：打字時的按鈕列（例句填空有自己的按鈕列） -->
-      <div class="mobile-actions" v-if="isMob && mobileKeyboard.isOpen.value && !isCloze" data-no-refocus @pointerdown.prevent>
+      <div class="mobile-actions" v-if="isMob && mobileKeyboard.isOpen.value && !isCustomPanel" data-no-refocus @pointerdown.prevent>
         <button class="mobile-chip" @click="onVolumeIconClick">
           <IconFluentSpeaker20Regular /> {{ $t('mobile_pronounce') }}
         </button>
@@ -514,7 +696,7 @@ useEvents([
       </div>
 
       <!-- 操作按钮行 -->
-      <div class="mt-1 flex gap-4 desktop-actions" v-if="!isCloze">
+      <div class="mt-1 flex gap-4 desktop-actions" v-if="!isCustomPanel">
         <BaseIcon
           @click="emit('toggleSimple')"
           :title="
@@ -577,7 +759,7 @@ useEvents([
       </template>
 
       <!-- 提示 Toast -->
-      <div class="center mt-3" v-if="notice.show && settingStore.showUsageTips && !isCloze">
+      <div class="center mt-3" v-if="notice.show && settingStore.showUsageTips && !isCustomPanel">
         <ToastComponent
           :duration="0"
           confirm
@@ -607,7 +789,7 @@ useEvents([
       <!-- WordMetaPanel: 翻译 + 例句 + 短语 + 词源 等展示 -->
       <!--      不要加key，里面有个只显示一次的变量-->
       <WordMetaPanel
-        v-if="!isCloze"
+        v-if="!isCustomPanel"
         ref="wordMetaPanelRef"
         :word="word"
         @complete="onSentencePracticeComplete"
@@ -869,6 +1051,110 @@ useEvents([
       font-size: 1.2rem;
       line-height: 1.8;
     }
+  }
+}
+
+// ============ 記憶宮殿：回想 ============
+.palace-recall {
+  width: 100%;
+  max-width: 36rem;
+  margin-top: 1.5rem;
+  text-align: center;
+
+  .palace-route {
+    display: flex;
+    gap: 0.35rem;
+    justify-content: center;
+
+    span {
+      width: 1.4rem;
+      height: 0.35rem;
+      border-radius: 0.2rem;
+      background: var(--color-item-border);
+
+      &.done {
+        background: #fcd34d;
+      }
+
+      &.on {
+        background: #b45309;
+      }
+    }
+  }
+
+  .palace-locus-idx {
+    font-size: 0.8rem;
+    color: #b45309;
+    font-weight: 600;
+    margin-top: 1rem;
+  }
+
+  .palace-locus-name {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-top: 0.2rem;
+  }
+
+  // 回想時鍵盤佔掉下半部，場景卡縮小
+  .palace-recall-scene {
+    max-width: 15rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .palace-recall-q {
+    font-size: 0.9rem;
+    color: var(--color-font-3, #888);
+    margin-top: 0.4rem;
+  }
+
+  .palace-gap {
+    display: inline-block;
+    margin-top: 0.3rem;
+    font-family: var(--en-article-family);
+    font-size: 1.6rem;
+    min-width: 10rem;
+    min-height: 2.4rem;
+    padding: 0 0.3rem;
+    border-bottom: 3px solid var(--color-select-bg, #3b82f6);
+    letter-spacing: 0.1rem;
+
+    &.ok {
+      border-color: rgb(22, 163, 74);
+    }
+
+    &.bad {
+      border-color: rgb(220, 38, 38);
+    }
+
+    // 只顯示輸入內容，不顯示默寫的整字與滿版底線（底線由 .cloze-gap 提供）
+    :deep(.typing-core) {
+      display: inline-block;
+
+      .letter {
+        display: none;
+      }
+
+      .dictation {
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: none;
+        display: inline;
+      }
+    }
+  }
+
+  .palace-hint {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    margin-top: 0.8rem;
+    text-align: left;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #1f2937;
   }
 }
 </style>

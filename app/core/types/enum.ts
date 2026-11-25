@@ -127,6 +127,8 @@ export enum WordPracticeType {
   Listen,
   Dictation,
   Cloze, // 例句填空：在例句的空格打出單字
+  PalacePlace, // 記憶宮殿：把單字放到路線上的位置（只看不打）
+  PalaceRecall, // 記憶宮殿：只給位置，打出放在那裡的單字
 }
 
 //练习类型

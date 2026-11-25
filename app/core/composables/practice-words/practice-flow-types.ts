@@ -18,7 +18,15 @@ export interface PracticeViewState {
 // ─── 流程模型 ──────────────────────────────────────────────────────────────────
 
 /** Step Template 的 id — 只描述"怎么练"，不关心词源 */
-export type PracticeStepTemplateId = 'followWrite' | 'spell' | 'listen' | 'dictation' | 'identify' | 'cloze'
+export type PracticeStepTemplateId =
+  | 'followWrite'
+  | 'spell'
+  | 'listen'
+  | 'dictation'
+  | 'identify'
+  | 'cloze'
+  | 'palacePlace'
+  | 'palaceRecall'
 
 /** Step Template 的名称和练习类型元数据。 */
 export interface PracticeStepTemplate {
@@ -163,4 +171,6 @@ export interface PracticeSessionSnapshot {
   cursor: PracticeFlowCursor
   /** 当前 Node 经前序 Step 处理后的工作词表；下一 Step 以它为输入。 */
   nodeWorkingWordKeys?: string[]
+  /** 存檔當下的流程步驟清單指紋；流程增減步驟後，舊游標會指錯步驟，指紋不同就不還原游標 */
+  stepSignature?: string
 }

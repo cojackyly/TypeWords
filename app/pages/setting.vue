@@ -28,6 +28,7 @@ import FsrsSetting from '@/components/setting/FsrsSetting.vue'
 import ArticleSetting from '@/components/setting/ArticleSetting.vue'
 import WordSetting from '@/components/setting/WordSetting.vue'
 import SoundSetting from '@/components/setting/SoundSetting.vue'
+import PalaceSetting from '@/components/setting/PalaceSetting.vue'
 import { checkAndUpgradePracticeWordCache, PRACTICE_ARTICLE_CACHE, PRACTICE_WORD_CACHE } from '@/core/utils/cache'
 import { useDataSyncPersistence } from '@/core/composables/useDataSyncPersistence'
 import SettingItem from '@/components/setting/SettingItem.vue'
@@ -71,6 +72,8 @@ const isMob = isMobile()
 let mobileShowContent = $ref(route?.query?.index != null)
 // 區網同步設定頁（只在手機清單出現）
 const LAN_SYNC_TAB_INDEX = 10
+// 記憶宮殿設定頁
+const PALACE_TAB_INDEX = 11
 let lanSyncUrlInput = $ref(getLanSyncUrl())
 const { toggleTheme, getTheme } = useTheme()
 const { locale, locales, setLocale } = useI18n()
@@ -615,6 +618,11 @@ function disable360() {
               <IconFluentTextUnderlineDouble20Regular />
               <span>{{ $t('word_settings') }}</span>
             </div>
+            <!-- 記憶宮殿 -->
+            <div class="tab" :class="tabIndex === PALACE_TAB_INDEX && 'active'" @click="selectTab(PALACE_TAB_INDEX)">
+              <IconFluentBuildingHome20Regular />
+              <span>{{ $t('palace_setting') }}</span>
+            </div>
             <div class="tab" :class="tabIndex === 3 && 'active'" @click="selectTab(3)">
               <IconFluentBookLetter20Regular />
               <span>{{ $t('article_settings') }}</span>
@@ -672,6 +680,7 @@ function disable360() {
           <CommonSetting v-if="tabIndex === 0" />
           <FsrsSetting v-if="tabIndex === 1" />
           <WordSetting v-if="tabIndex === 2" />
+          <PalaceSetting v-if="tabIndex === PALACE_TAB_INDEX" />
           <ArticleSetting v-if="tabIndex === 3" />
           <SoundSetting v-if="tabIndex === 4" />
 

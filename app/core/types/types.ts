@@ -11,6 +11,8 @@ export type Word = {
   id?: string
   custom?: boolean
   word: string
+  /** 記憶宮殿用的單字圖：1–3 個 Emoji 組成的畫面（詞庫內建） */
+  emoji?: string
   phonetic0: string
   phonetic1: string
   trans: {

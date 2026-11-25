@@ -5,5 +5,9 @@ import { WordPracticeType } from '@/core/types/enum.ts'
  * 默寫與例句填空都屬於這一類。
  */
 export function isWholeWordJudgeType(type: WordPracticeType): boolean {
-  return type === WordPracticeType.Dictation || type === WordPracticeType.Cloze
+  return (
+    type === WordPracticeType.Dictation ||
+    type === WordPracticeType.Cloze ||
+    type === WordPracticeType.PalaceRecall
+  )
 }

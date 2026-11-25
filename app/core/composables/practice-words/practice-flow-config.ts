@@ -21,6 +21,8 @@ export const STEP_TEMPLATE_META: Record<PracticeStepTemplateId, PracticeStepTemp
   dictation: { id: 'dictation', label: 'dictation', practiceType: WordPracticeType.Dictation },
   identify: { id: 'identify', label: 'identify', practiceType: WordPracticeType.Identify },
   cloze: { id: 'cloze', label: 'cloze', practiceType: WordPracticeType.Cloze },
+  palacePlace: { id: 'palacePlace', label: 'palace_place', practiceType: WordPracticeType.PalacePlace },
+  palaceRecall: { id: 'palaceRecall', label: 'palace_recall', practiceType: WordPracticeType.PalaceRecall },
 }
 
 export function materializeWordAdvance(config?: PracticeWordAdvanceConfig): WordAdvanceRule {
@@ -66,6 +68,11 @@ export const BUILTIN_FLOWS: Record<string, PracticeFlowConfig> = {
         label: 'new_words',
         source: 'taskNew',
         steps: [
+          // 記憶宮殿：先把新詞放到路線上（只看不打，不洗牌，照路線順序）
+          {
+            templateId: 'palacePlace',
+            shuffleOnEnter: false,
+          },
           {
             templateId: 'followWrite',
             wordAdvance: WORD_LOOP_WITH_SPELL,
@@ -83,10 +90,15 @@ export const BUILTIN_FLOWS: Record<string, PracticeFlowConfig> = {
             onEnd: DEFAULT_ON_END,
           },
           // 例句填空：在例句中回想新詞（可在單字設定關閉）
-          // 加在新詞節點最後，既有存檔的 nodeIndex/stepIndex 不受影響，所以不升 CURRENT_FLOW_VERSION
           {
             templateId: 'cloze',
             shuffleOnEnter: true,
+            onEnd: DEFAULT_ON_END,
+          },
+          // 記憶宮殿：沿著路線回想（不洗牌，照位置順序）
+          {
+            templateId: 'palaceRecall',
+            shuffleOnEnter: false,
             onEnd: DEFAULT_ON_END,
           },
         ],

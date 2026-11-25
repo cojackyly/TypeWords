@@ -497,9 +497,15 @@ export function createPracticeWordNavigator(deps: NavigatorDeps) {
     handleListEnd(currentPhase.value, true)
   }
 
+  /** 流程的步驟清單指紋（例如 palacePlace,followWrite,…|identify,…） */
+  function getStepSignature() {
+    return activeFlowConfig.value.nodes.map(node => node.steps.map(step => step.templateId).join(',')).join('|')
+  }
+
   function buildSessionSnapshot(): PracticeSessionSnapshot {
     return {
       flowId: flowRuntime.getActiveFlowId(),
+      stepSignature: getStepSignature(),
       cursor: {
         ...activeCursor.value,
         loop: activeCursor.value.loop ? { ...activeCursor.value.loop } : null,
@@ -529,7 +535,9 @@ export function createPracticeWordNavigator(deps: NavigatorDeps) {
   function restoreSessionSnapshot(snapshot: PracticeSessionSnapshot): boolean {
     flowRuntime.loadPracticeFlow(snapshot.flowId)
 
-    const flowMatched = activeFlowConfig.value.id === snapshot.flowId
+    // 流程步驟有增減（新功能、使用者開關例句填空／記憶宮殿）時，舊游標會指錯步驟，改成從頭開始這一組
+    const flowMatched =
+      activeFlowConfig.value.id === snapshot.flowId && snapshot.stepSignature === getStepSignature()
     const cursorRestored = flowMatched && restoreCursorFromSnapshot(snapshot.cursor)
     if (!cursorRestored) {
       flowRuntime.loadPracticeFlow(getFlowIdForMode(WordPracticeMode.System))

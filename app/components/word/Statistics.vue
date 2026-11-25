@@ -204,6 +204,10 @@ const encouragementText = $computed(() => {
           <div class="summary-actions flex justify-center flex-wrap">
             <!-- 練完順手同步，減少忘記同步 -->
             <LanSyncButton block class="summary-sync" />
+            <!-- 記憶宮殿總覽：今天的單字放在哪些位置 -->
+            <BaseButton v-if="settingStore.practicePalace" @click="$router.push('/palace')">
+              <div class="center gap-2">🏠 {{ $t('palace_overview') }}</div>
+            </BaseButton>
             <BaseButton
               :keyboard="settingStore.shortcutKeyMap[ShortcutKey.RepeatChapter]"
               @click="options(ShortcutKey.RepeatChapter)"

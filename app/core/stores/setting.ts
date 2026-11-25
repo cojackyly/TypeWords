@@ -1,3 +1,8 @@
+import {
+  createDefaultPalaces,
+  type Palace,
+  type PalaceAssignment,
+} from '@/core/composables/practice-words/practice-palace.ts'
 import { defineStore } from 'pinia'
 import { checkAndUpgradeSaveSetting, cloneDeep, parseJsonStr } from '../utils'
 import { get, set } from 'idb-keyval'
@@ -65,6 +70,10 @@ export interface SettingState {
   ignoreSymbol: boolean // 过滤符号
   practiceSentence: boolean // 练习例句
   practiceCloze: boolean // 學習流程加入「例句填空」
+  practicePalace: boolean // 學習流程加入「記憶宮殿」（宮殿放置＋宮殿回想）
+  palaces: Palace[] // 記憶宮殿路線
+  activePalaceId: string // 目前使用的宮殿
+  palaceAssignments: Record<string, PalaceAssignment> // 單字放在哪個位置（key：小寫單字）
   autoPlayFirstSentence: boolean // 单词发音结束后自动播放首条例句
 
   fsrsEasyLimit: number // 小于等于fsrsEasyLimit的卡片会评估为Easy
@@ -140,6 +149,10 @@ export const getDefaultSettingState = (): SettingState => ({
   ignoreSymbol: true,
   practiceSentence: false,
   practiceCloze: true,
+  practicePalace: true,
+  palaces: createDefaultPalaces(),
+  activePalaceId: 'home',
+  palaceAssignments: {},
   autoPlayFirstSentence: true,
   fsrsEasyLimit: 0,
   fsrsGoodLimit: 3,

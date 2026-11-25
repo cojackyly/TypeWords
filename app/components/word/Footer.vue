@@ -69,7 +69,8 @@ const showSkipStep = computed(() => flowDisplay.value.showSkipStep)
 <template>
   <div class="footer" ref="footerRef" :class="{ 'mobile-menu-open': mobileMenuOpen }">
     <!-- 手機版頂列：離開 / 進度 / 更多 -->
-    <div class="mobile-head">
+    <!-- data-no-refocus：點頂列（例如「⋯」）時不要叫出鍵盤 -->
+    <div class="mobile-head" data-no-refocus>
       <BaseIcon @click="router.push('/words')" :title="$t('close')">
         <IconFluentDismiss20Regular />
       </BaseIcon>

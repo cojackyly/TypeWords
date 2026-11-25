@@ -266,13 +266,23 @@ export function createPracticeFlowRuntime(initialConfig: PracticeFlowConfig = BU
     return getUserFlow(flowIdOrConfig) ?? resolveFlowConfigOrSystem(getFlowConfig(flowIdOrConfig))
   }
 
-  /** 使用者在單字設定關閉「例句填空」時，從流程移除 cloze 步驟（整個節點都是 cloze 時保留，避免空節點） */
+  /**
+   * 依單字設定移除使用者關閉的步驟：例句填空（cloze）、記憶宮殿（palacePlace / palaceRecall）。
+   * 整個節點都被移除時保留原樣，避免空節點。
+   */
   function applyClozePreference(config: PracticeFlowConfig): PracticeFlowConfig {
-    if (useSettingStore().practiceCloze !== false) return config
+    const settingStore = useSettingStore()
+    const disabled = new Set<string>()
+    if (settingStore.practiceCloze === false) disabled.add('cloze')
+    if (settingStore.practicePalace === false) {
+      disabled.add('palacePlace')
+      disabled.add('palaceRecall')
+    }
+    if (!disabled.size) return config
     return {
       ...config,
       nodes: config.nodes.map(node => {
-        const steps = node.steps.filter(step => step.templateId !== 'cloze')
+        const steps = node.steps.filter(step => !disabled.has(step.templateId))
         return steps.length ? { ...node, steps } : node
       }),
     }
