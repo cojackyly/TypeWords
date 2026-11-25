@@ -35,24 +35,24 @@ const settingStore = useSettingStore()
       <InputNumber :min="0" :max="10" v-model="settingStore.wordReviewRatio" />
     </SettingItem>
 
-    <SettingItem title="无到期词时加入随机复习" desc="开启后，智能学习没有到期复习词时，会从已学单词中随机补充复习词">
+    <SettingItem :title="$t('random_review_when_no_due')" :desc="$t('random_review_when_no_due_desc')">
       <Switch v-model="settingStore.autoAddRandomReviewWhenNoDue" />
     </SettingItem>
 
-    <SettingItem title="显示词源和相关词" desc="单词的词源和相关词可能有误，请谨慎使用">
+    <SettingItem :title="$t('show_etymology')" :desc="$t('show_etymology_desc')">
       <Switch v-model="settingStore.showEtymologyAndRelWords" />
     </SettingItem>
 
-    <SettingItem title="显示练习引导">
+    <SettingItem :title="$t('show_usage_tips')">
       <Switch v-model="settingStore.showUsageTips" />
     </SettingItem>
 
-    <SettingItem title="总是显示笔记" desc="关闭后，只会在跟写时显示">
+    <SettingItem :title="$t('always_show_note')" :desc="$t('always_show_note_desc')">
       <Switch v-model="settingStore.alwaysShowNote" />
     </SettingItem>
 
     <div class="line"></div>
-    <SettingItem :mainTitle="`例句设置`" />
+    <SettingItem :mainTitle="$t('sentence_settings')" />
     <SettingItem :title="$t('practice_cloze')" :desc="$t('practice_cloze_desc')">
       <Switch v-model="settingStore.practiceCloze" />
     </SettingItem>
@@ -81,8 +81,8 @@ const settingStore = useSettingStore()
 
     <SettingItem
       v-else
-      title="空格冷却时间"
-      desc="手动模式下，单词完成后为避免同时按下最后一个字母和空格键时跳过，忽略空格键的时间"
+      :title="$t('space_cooldown')"
+      :desc="$t('space_cooldown_desc')"
     >
       <InputNumber
         v-model="settingStore.spaceCooldownTime"

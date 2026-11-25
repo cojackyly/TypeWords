@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 interface IProps {
   modelValue: boolean
@@ -10,11 +11,14 @@ interface IProps {
   type?: 'primary' | 'info'
 }
 
+// 開關文字預設跟著語系（傳入 activeText / inactiveText 時以傳入為準）
 const props = withDefaults(defineProps<IProps>(), {
-  activeText: '开',
-  inactiveText: '关',
   type: 'primary',
 })
+
+const { t } = useI18n()
+const onText = computed(() => props.activeText ?? t('switch_on'))
+const offText = computed(() => props.inactiveText ?? t('switch_off'))
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
@@ -58,7 +62,7 @@ const ballSize = computed(() => switchHeight.value - 4)
     :style="{ width: switchWidth + 'px', height: switchHeight + 'px', borderRadius: switchHeight + 'px' }"
   >
     <transition name="fade">
-      <span class="text left" v-if="isChecked && activeText">{{ activeText }}</span>
+      <span class="text left" v-if="isChecked && onText">{{ onText }}</span>
     </transition>
     <div
       class="ball"
@@ -69,7 +73,7 @@ const ballSize = computed(() => switchHeight.value - 4)
       }"
     ></div>
     <transition name="fade">
-      <span class="text right" v-if="!isChecked && inactiveText">{{ inactiveText }}</span>
+      <span class="text right" v-if="!isChecked && offText">{{ offText }}</span>
     </transition>
   </div>
 </template>

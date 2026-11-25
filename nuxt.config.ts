@@ -113,7 +113,9 @@ export default defineNuxtConfig({
       { code: 'id', language: 'id-ID', file: 'id.json', name: 'Bahasa Indonesia' },
       { code: 'tw', language: 'zh-TW', file: 'tw.json', name: '繁體中文' },
     ],
-    defaultLocale: 'zh',
+    // 預設繁體中文（這個 fork 給自己用）；不依瀏覽器語言自動切換，使用者的選擇由 plugins/00.locale.client.ts 記住
+    defaultLocale: 'tw',
+    detectBrowserLanguage: false,
     // langDir:'app/i18n/',
     strategy: 'no_prefix',
   },
