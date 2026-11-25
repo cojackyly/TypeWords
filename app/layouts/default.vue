@@ -46,6 +46,9 @@ watch(
 const { locales, setLocale } = useI18n()
 const route = useRoute()
 
+// 練習頁全螢幕，手機不顯示底部 tab bar
+const isPracticeRoute = $computed(() => route.path?.includes('/practice') || route.path?.includes('/words-test'))
+
 const showIcon = $computed(() => {
   return ['/words', '/articles', '/setting', '/help', '/doc', '/feedback'].includes(route.path)
 })
@@ -117,13 +120,9 @@ function onMouseLeave() {
       </div>
     </div>
 
-    <!-- 移动端顶部菜单栏 -->
-    <div class="mobile-top-nav" :class="{ collapsed: settingStore.mobileNavCollapsed }">
+    <!-- 移动端底部 tab bar -->
+    <div class="mobile-tab-bar" v-if="!isPracticeRoute">
       <div class="nav-items">
-        <div class="nav-item" @click="router.push('/')" :class="{ active: route.path === '/' }">
-          <IconFluentHome20Regular />
-          <span>{{ $t('home_page') }}</span>
-        </div>
         <div class="nav-item" @click="router.push('/words')" :class="{ active: route.path?.includes('/words') }">
           <IconFluentTextUnderlineDouble20Regular />
           <span>{{ $t('words') }}</span>
@@ -138,15 +137,11 @@ function onMouseLeave() {
           <div class="red-point" v-if="runtimeStore.isError"></div>
         </div>
       </div>
-      <div class="nav-toggle" @click="settingStore.mobileNavCollapsed = !settingStore.mobileNavCollapsed">
-        <IconFluentChevronDown20Filled v-if="!settingStore.mobileNavCollapsed" />
-        <IconFluentChevronUp20Filled v-else />
-      </div>
     </div>
 
     <IeDialog />
 
-    <div class="flex-1 z-1 relative main-content overflow-x-hidden">
+    <div class="flex-1 z-1 relative main-content overflow-x-hidden" :class="{ 'has-tab-bar': !isPracticeRoute }">
       <div
         class="mt-3 center relative z-9999 pointer-events-none"
         @click="router.push('/setting?index=6 ')"
@@ -163,7 +158,7 @@ function onMouseLeave() {
       <!--      <slot></slot>-->
       <router-view></router-view>
 
-      <div class="absolute right-4 top-4 flex z-1 gap-2" v-if="showIcon">
+      <div class="absolute right-4 top-4 flex z-1 gap-2 desktop-icons" v-if="showIcon">
         <MiniProgram v-if="settingStore.load && !settingStore.first" />
 
         <div class="relative group">
@@ -238,45 +233,42 @@ function onMouseLeave() {
   }
 }
 
-// 移动端顶部菜单栏
-.mobile-top-nav {
+// 移动端底部 tab bar
+.mobile-tab-bar {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   background: var(--color-second);
-  border-bottom: 1px solid var(--color-item-border);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid var(--color-item-border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 1000;
-  transition: all 0.3s ease;
 
   .nav-items {
     display: flex;
     justify-content: space-around;
-    padding: 0.5rem 0;
+    padding: 0.3rem 0;
 
     .nav-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 0.5rem;
+      padding: 0.3rem 1rem;
       cursor: pointer;
-      transition: all 0.2s;
       min-height: 44px;
-      min-width: 44px;
+      min-width: 64px;
       justify-content: center;
       position: relative;
 
       svg {
-        font-size: 1.2rem;
-        margin-bottom: 0.2rem;
+        font-size: 1.4rem;
+        margin-bottom: 0.15rem;
         color: var(--color-main-text);
       }
 
       span {
         font-size: 0.7rem;
         color: var(--color-main-text);
-        text-align: center;
       }
 
       &.active {
@@ -293,7 +285,7 @@ function onMouseLeave() {
       .red-point {
         position: absolute;
         top: 0.2rem;
-        right: 0.2rem;
+        right: 0.8rem;
         width: 0.4rem;
         height: 0.4rem;
         background: #ff4444;
@@ -301,44 +293,21 @@ function onMouseLeave() {
       }
     }
   }
-
-  .nav-toggle {
-    position: absolute;
-    bottom: -1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--color-second);
-    border: 1px solid var(--color-item-border);
-    border-top: none;
-    border-radius: 0 0 0.5rem 0.5rem;
-    padding: 0.3rem 0.8rem;
-    cursor: pointer;
-    transition: all 0.3s;
-
-    svg {
-      font-size: 1rem;
-      color: var(--color-main-text);
-    }
-
-    &:active {
-      transform: translateX(-50%) scale(0.95);
-    }
-  }
-
-  &.collapsed {
-    transform: translateY(calc(-100% + 1.5rem));
-
-    .nav-items {
-      opacity: 0;
-      pointer-events: none;
-    }
-  }
 }
 
 .main-content {
-  // 移动端时为主内容区域添加顶部内边距，避免被顶部菜单遮挡
+  // 移动端：上方避开瀏海，下方避開底部 tab bar
   @media (max-width: 768px) {
-    padding-top: 4rem;
+    padding-top: env(safe-area-inset-top, 0px);
+
+    &.has-tab-bar {
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    // 語言、主題、小程序圖示會蓋住標題；手機改到設定頁操作
+    .desktop-icons {
+      display: none;
+    }
   }
 }
 
@@ -358,9 +327,9 @@ function onMouseLeave() {
   }
 }
 
-// 桌面端隐藏移动端顶部菜单栏
+// 桌面端隐藏移动端底部 tab bar
 @media (min-width: 769px) {
-  .mobile-top-nav {
+  .mobile-tab-bar {
     display: none;
   }
 }

@@ -33,6 +33,10 @@ import WordMetaPanel from './WordMetaPanel.vue'
 import { useOnKeyboardEventListener } from '@/core/hooks/event.ts'
 import { _nextTick, throttle } from '@/core'
 import { usePracticeTypeWordController } from '@/core/composables/practice-words/usePracticeTypeWordController.ts'
+import { useMobileKeyboard } from '@/core/hooks/mobileKeyboard.ts'
+import { vibrateOnTypo } from '@/core/hooks/haptics.ts'
+import { usePracticeStore } from '@/core/stores/practice.ts'
+import { isMobile } from '@/core/utils'
 
 const { t: $t } = useI18n()
 
@@ -61,6 +65,24 @@ const emit = defineEmits<{
 
 const settingStore = useSettingStore()
 const store = useBaseStore()
+const statStore = usePracticeStore()
+
+// ============ 手機版：鍵盤打開 = 打字模式；鍵盤收起 = 看詳情模式 ============
+const isMob = isMobile()
+const mobileKeyboard = useMobileKeyboard()
+const mobileDetail = computed(
+  () => isMob && !mobileKeyboard.isOpen.value && props.practiceType !== WordPracticeType.Identify
+)
+
+function enterMobileDetail() {
+  if (!statStore.timerPaused) statStore.pauseTimer('manual')
+  mobileKeyboard.close()
+}
+
+function continueMobileTyping() {
+  if (statStore.timerPaused) statStore.resumeTimer()
+  mobileKeyboard.open()
+}
 
 // ============ 音频 ============
 const playWordAudio = usePlayWordAudio()
@@ -109,6 +131,7 @@ function onTypingCoreComplete() {
 }
 
 function onTypingCoreWrong() {
+  vibrateOnTypo()
   if (props.practiceType === WordPracticeType.Identify) {
     emit('wrong', 'identifyTyping')
     return
@@ -313,7 +336,12 @@ useEvents([
 </script>
 
 <template>
-  <div class="typing-word" v-if="word.word.length">
+  <div
+    class="typing-word"
+    :class="{ 'mobile-typing': isMob && mobileKeyboard.isOpen.value, 'mobile-detail': mobileDetail }"
+    :data-no-refocus="mobileDetail ? '' : undefined"
+    v-if="word.word.length"
+  >
     <div class="flex flex-col items-center">
       <!-- 音标 + 发音按钮（通过 slot 传入 VolumeIcon） -->
       <div class="flex gap-1 mt-10 md:mt-30">
@@ -339,7 +367,8 @@ useEvents([
       </div>
 
       <!-- 单词键入区 -->
-      <Tooltip :title="`快捷键(${settingStore.shortcutKeyMap[ShortcutKey.ShowWord]})显示单词信息`">
+      <!-- 手機點單字會觸發 hover 提示並蓋住音標，所以手機停用 -->
+      <Tooltip :title="`快捷键(${settingStore.shortcutKeyMap[ShortcutKey.ShowWord]})显示单词信息`" :disabled="isMob">
         <div
           id="word-wrap"
           ref="word-wrap"
@@ -364,8 +393,21 @@ useEvents([
         </div>
       </Tooltip>
 
+      <!-- 手機版：打字時的按鈕列 -->
+      <div class="mobile-actions" v-if="isMob && mobileKeyboard.isOpen.value" data-no-refocus @pointerdown.prevent>
+        <button class="mobile-chip" @click="onVolumeIconClick">
+          <IconFluentSpeaker20Regular /> {{ $t('mobile_pronounce') }}
+        </button>
+        <button class="mobile-chip" @click="enterMobileDetail">
+          <IconFluentDocumentText20Regular /> {{ $t('mobile_view_detail') }}
+        </button>
+        <button class="mobile-chip" @click="emit('skip')">
+          <IconFluentArrowBounce20Regular class="transform-rotate-180" /> {{ $t('skip_word') }}
+        </button>
+      </div>
+
       <!-- 操作按钮行 -->
-      <div class="mt-1 flex gap-4">
+      <div class="mt-1 flex gap-4 desktop-actions">
         <BaseIcon
           @click="emit('toggleSimple')"
           :title="
@@ -466,6 +508,31 @@ useEvents([
       />
     </div>
     <WordLookupPopover />
+
+    <!-- 手機版：鍵盤上方工具列 -->
+    <div class="mobile-keyboard-bar" v-if="isMob && mobileKeyboard.isOpen.value" data-no-refocus @pointerdown.prevent>
+      <button @click="collect">
+        <IconFluentStar20Filled v-if="isCollect" />
+        <IconFluentStar20Regular v-else />
+        {{ $t('collect') }}
+      </button>
+      <button @click="emit('toggleSimple')">
+        <IconFluentCheckmarkCircle16Filled v-if="isSimple" />
+        <IconFluentCheckmarkCircle16Regular v-else />
+        {{ $t('mark_mastered') }}
+      </button>
+      <button @click="enterMobileDetail">
+        <IconFluentChevronDown20Regular />
+        {{ $t('mobile_hide_keyboard') }}
+      </button>
+    </div>
+
+    <!-- 手機版：看詳情時，底部固定「繼續打字」 -->
+    <div class="mobile-continue" v-if="mobileDetail">
+      <BaseButton size="large" type="primary" class="w-full" @click="continueMobileTyping">
+        <IconFluentKeyboard20Regular class="mr-1" /> {{ $t('mobile_continue_typing') }}
+      </BaseButton>
+    </div>
   </div>
 </template>
 
@@ -519,5 +586,85 @@ useEvents([
       @apply w-unset mr-2;
     }
   }
+}
+
+// ============ 手機版 ============
+.mobile-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.mobile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 1.2rem;
+  border: 1px solid var(--color-item-border);
+  background: var(--color-second);
+  color: var(--color-main-text);
+}
+
+.mobile-keyboard-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--mobile-keyboard-offset, 0px);
+  height: 2.6rem;
+  z-index: 1001;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: var(--color-second);
+  border-top: 1px solid var(--color-item-border);
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--color-main-text);
+    background: none;
+    border: none;
+  }
+}
+
+.mobile-continue {
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+  z-index: 1001;
+}
+
+// 打字模式：鍵盤擋住下半部，只留單字、2 行中文；例句等收進「看詳情」
+.mobile-typing {
+  .desktop-actions {
+    display: none;
+  }
+
+  :deep(.word-meta) {
+    .translate {
+      font-size: 1rem;
+    }
+
+    > :not(.translate):not(:has(.sentence-highlight)) {
+      display: none;
+    }
+
+    // 只顯示前 2 個詞性（第 1 個子元素是沒有詞性的翻譯）
+    .translate > div > .flex:nth-child(n + 4) {
+      display: none;
+    }
+  }
+}
+
+// 看詳情模式：內容可捲動，底部留位置給「繼續打字」
+.mobile-detail {
+  overflow-y: auto;
+  padding-bottom: 6rem;
 }
 </style>

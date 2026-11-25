@@ -133,4 +133,21 @@ defineProps<{
     right: 0 !important;
   }
 }
+
+// 手機版：工具列改成頂列（離開 / 進度 / 更多），練習區在頂列下方
+@media (max-width: 768px) {
+  .wrap,
+  .footer-hide .wrap {
+    height: calc(100vh - env(safe-area-inset-top, 0px)) !important;
+    padding-top: 3rem;
+  }
+
+  .footer-wrap,
+  .footer-hide .footer-wrap {
+    top: env(safe-area-inset-top, 0px);
+    bottom: auto;
+    left: 0;
+    right: 0;
+  }
+}
 </style>

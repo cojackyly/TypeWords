@@ -109,7 +109,7 @@ const text = $computed(() => {
     />
   </div>
 
-  <div class="mt-4 flex gap-2 relative w-full center">
+  <div class="mt-4 flex gap-2 relative w-full center identify-actions">
     <Tooltip>
       <IconFluentQuestionCircle20Regular class="absolute left-0 bottom-0 opacity-50" width="24" />
       <template #reference>
@@ -210,5 +210,26 @@ const text = $computed(() => {
 .question-wrong {
   background: color-mix(in srgb, red 10%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, red 25%, transparent);
+}
+
+// 手機版：「我認識 / 不認識 / 已掌握」改成 3 個滿版大按鈕，拇指好按
+@media (max-width: 768px) {
+  .identify-actions {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0 0.5rem;
+
+    > :deep(.base-button) {
+      width: 100%;
+      height: 3rem;
+      margin: 0;
+    }
+
+    // 說明圖示（快捷鍵說明）與右側批量標記在手機上用不到
+    > :deep(svg),
+    > .absolute\! {
+      display: none;
+    }
+  }
 }
 </style>

@@ -76,7 +76,7 @@ watch(
         >
       </div>
 
-      <div class="text-center mt-4 mb-8 flex gap-1 items-end justify-center">
+      <div class="text-center mt-4 mb-8 flex gap-1 items-end justify-center start-row">
         <span>{{ $t('from_word') }}</span>
         <div class="w-20">
           <BaseInput class="target-number" v-model="tempLastLearnIndex" />
@@ -213,6 +213,32 @@ watch(
     .base-button {
       width: 100%;
       min-height: 44px;
+    }
+  }
+}
+
+// 手機：「從第 N 個開始，每日 N 個新詞，最多複習 N 單詞」一行放不下，改成可換行，
+// 並把輸入框加寬、數字縮小，避免數字被切掉
+@media (max-width: 768px) {
+  .target-modal .start-row {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.6rem;
+
+    > span {
+      white-space: nowrap;
+    }
+
+    .w-20,
+    .w-16 {
+      width: 4.5rem;
+    }
+
+    :deep(.target-number),
+    :deep(.target-number input),
+    > .target-number {
+      font-size: 1.4rem !important;
+      line-height: 1.4;
     }
   }
 }

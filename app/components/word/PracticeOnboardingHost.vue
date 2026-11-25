@@ -41,8 +41,8 @@ defineExpose({
   openConflictNotice2,
 })
 
-// 首次加载时显示提示
-if (!route.query.guide) {
+// 首次加载时显示提示（手機不顯示「收藏為書籤」提示）
+if (!route.query.guide && !isMobile()) {
   setTimeout(() => {
     showCollectNotice = true
   }, 10000)

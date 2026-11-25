@@ -11,6 +11,7 @@ import isBetween from 'dayjs/plugin/isBetween'
 import { defineAsyncComponent, inject, watch } from 'vue'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import { msToHourMinute } from '@/core/utils'
+import { closeMobileKeyboard } from '@/core/hooks/mobileKeyboard.ts'
 import ChannelIcons from '@/components/channel-icons/ChannelIcons.vue'
 import { useI18n } from 'vue-i18n'
 
@@ -61,6 +62,11 @@ watch([model, () => props.loading], ([open, loading]) => {
   }
 })
 
+// 手機：結算畫面打開時收起鍵盤，避免擋住按鈕
+watch(model, open => {
+  if (open) closeMobileKeyboard()
+})
+
 const close = () => (model.value = false)
 
 useEvents([
@@ -99,7 +105,7 @@ const encouragementText = $computed(() => {
 
 <template>
   <Dialog v-model="model" :close-on-click-bg="false" :header="false" :keyboard="false" :show-close="false">
-    <div class="p-8 pr-3 bg-[var(--bg-card-primary)] min-w-130 rounded-2xl">
+    <div class="p-8 pr-3 bg-[var(--bg-card-primary)] min-w-130 rounded-2xl summary-card">
       <!-- Header Section -->
       <div class="text-center relative">
         <div
@@ -191,7 +197,7 @@ const encouragementText = $computed(() => {
                 </div>
               </div>
             </div>
-            <ChannelIcons />
+            <div class="summary-channels"><ChannelIcons /></div>
           </div>
           <!-- Action Buttons -->
           <div class="summary-actions flex justify-center flex-wrap">
@@ -232,15 +238,33 @@ const encouragementText = $computed(() => {
 </template>
 <style scoped lang="scss">
 @media (max-width: 768px) {
+  // 手機：桌面版最小寬度 520px 會超出螢幕，改成滿版並可上下捲動
+  .summary-card {
+    min-width: 0 !important;
+    width: calc(100vw - 1.5rem);
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2rem);
+    overflow-y: auto;
+    padding: 1.2rem 1rem !important;
+    box-sizing: border-box;
+  }
+
+  // 分享到社群的圖示在個人 App 用不到
+  .summary-channels {
+    display: none;
+  }
+
   .summary-main {
     flex-direction: column;
   }
 
   .summary-actions {
     flex-direction: column;
-    .base-button {
+    gap: 0.6rem;
+    :deep(.base-button) {
       width: 100%;
       min-height: 48px;
+      // BaseButton 預設相鄰按鈕有左邊距，直向排列時會錯位
+      margin-left: 0 !important;
     }
   }
 

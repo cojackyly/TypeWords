@@ -1,6 +1,7 @@
 import {onDeactivated, onMounted, onUnmounted, watch, type WatchSource} from 'vue'
 import {emitter, EventKey} from '../utils/eventBus'
 import {useSettingStore} from '../stores'
+import { TYPING_LISTENER_ID } from './mobileKeyboard.ts'
 import {isMobile} from '../utils'
 import {Toast} from '@/base'
 
@@ -111,11 +112,13 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
 
     if (type === 'keydown') {
       const ensureMobileInput = () => {
-        let input = document.querySelector('#typing-listener') as HTMLInputElement | null
+        let input = document.getElementById(TYPING_LISTENER_ID) as HTMLInputElement | null
         if (!input) {
           input = document.createElement('input')
-          input.id = 'typing-listener'
-          input.type = 'text'
+          input.id = TYPING_LISTENER_ID
+          // 手機用 password 類型：iOS 會強制英文 ASCII 鍵盤，不會出現注音等中文輸入法
+          // （text / email / url 類型都擋不住，2026-11-25 iOS 27 模擬器實測）
+          input.type = isMobile() ? 'password' : 'text'
           input.autofocus = true
           input.autocomplete = 'off'
           input.autocapitalize = 'off'
@@ -223,6 +226,8 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
         const typingWord = target.closest('#PracticeArea')
         if (!typingWord) return
         if (target.closest('input, textarea, select, [contenteditable="true"]')) return false
+        // 手機「看詳情」區域：點例句發音等按鈕時，不要重新叫出鍵盤
+        if (target.closest('[data-no-refocus]')) return false
         if (!getSelectedText()) {
           window.setTimeout(() => hiddenInput.focus(), 160)
         }

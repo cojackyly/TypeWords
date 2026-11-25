@@ -13,10 +13,18 @@ import {
   useInjectedDisplayActions,
   useInjectedDisplayPolicy,
 } from '@/core/composables/practice-words/usePracticeDisplayPolicy.ts'
-import { computed, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { onClickOutside } from '@vueuse/core'
 import { getPracticeFlowDisplayState } from '@/core/composables/practice-words/practice-flow-display.ts'
 
+const router = useRouter()
 const statStore = usePracticeStore()
+// 手機版：右上「⋯」選單是否打開（工具圖示收在裡面）
+let mobileMenuOpen = $ref(false)
+const footerRef = ref<HTMLElement | null>(null)
+// 點選單以外的地方時關閉「⋯」選單
+onClickOutside(footerRef, () => (mobileMenuOpen = false))
 const settingStore = useSettingStore()
 const { t: $t } = useI18n()
 const displayActions = useInjectedDisplayActions()
@@ -59,7 +67,30 @@ const showSkipStep = computed(() => flowDisplay.value.showSkipStep)
 </script>
 
 <template>
-  <div class="footer">
+  <div class="footer" ref="footerRef" :class="{ 'mobile-menu-open': mobileMenuOpen }">
+    <!-- 手機版頂列：離開 / 進度 / 更多 -->
+    <div class="mobile-head">
+      <BaseIcon @click="router.push('/words')" :title="$t('close')">
+        <IconFluentDismiss20Regular />
+      </BaseIcon>
+      <div class="mobile-progress">
+        <StageProgress :stages="stages" />
+        <div class="mobile-meta">
+          <span>{{ status }} · {{ practiceData.index + 1 }} / {{ practiceData.words.length }}</span>
+          <span>
+            <span class="color-red" v-if="practiceData.wrongWords.length">✗ {{ practiceData.wrongWords.length }} · </span>
+            <span @click="onTimerRowClick">
+              <IconFluentPause20Regular v-if="statStore.timerPaused" width="14" height="14" class="align-middle" />
+              <template v-else>{{ Math.floor(statStore.spend / 1000 / 60) }}{{ $t('minutes') }}</template>
+            </span>
+          </span>
+        </div>
+      </div>
+      <BaseIcon @click="mobileMenuOpen = !mobileMenuOpen">
+        <IconFluentMoreHorizontal20Regular />
+      </BaseIcon>
+    </div>
+
     <Tooltip
       :title="`${settingStore.showToolbar ? $t('collapse') : $t('expand')}(${settingStore.shortcutKeyMap[ShortcutKey.ToggleToolbar]})`"
     >
@@ -326,6 +357,59 @@ const showSkipStep = computed(() => flowDisplay.value.showSkipStep)
     .progress-wrap {
       padding: 0 0.3rem;
       bottom: 0.3rem;
+    }
+  }
+}
+
+// 手機版頂列預設隱藏，只在 ≤768px 顯示
+.mobile-head {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .footer {
+    .mobile-head {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      height: 3rem;
+      padding: 0 0.3rem;
+      background: var(--color-primary);
+
+      .mobile-progress {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .mobile-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--color-font-3, #888);
+        margin-top: 0.2rem;
+      }
+    }
+
+    // 原本的工具列與統計：收進「⋯」選單
+    .arrow,
+    .progress-wrap,
+    .bottom > :first-child,
+    .bottom .stat {
+      display: none;
+    }
+
+    .bottom {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0.3rem;
+      width: auto;
+      margin: 0;
+      padding: 0.5rem;
+    }
+
+    &.mobile-menu-open .bottom {
+      display: block;
     }
   }
 }

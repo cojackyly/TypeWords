@@ -7,7 +7,7 @@ import { useRuntimeStore } from '@/core/stores/runtime.ts'
 import type { Dict, TaskWords, Word } from '@/core/types/types.ts'
 import { useStartKeyboardEventListener } from '@/core/hooks/event.ts'
 import useTheme from '@/core/hooks/theme.ts'
-import { _getDictDataByUrl, resourceWrap, shuffle, throttle } from '@/core/utils'
+import { _getDictDataByUrl, isMobile, resourceWrap, shuffle, throttle } from '@/core/utils'
 import { useRoute, useRouter } from 'vue-router'
 import Footer from '@/components/word/Footer.vue'
 import Panel from '@/components/Panel.vue'
@@ -227,6 +227,8 @@ async function reloadRemotePracticeSession(): Promise<boolean> {
 }
 
 onMounted(async () => {
+  // 手機版：單字清單面板會蓋住整個畫面，進入練習時預設收起
+  if (isMobile()) settingStore.showPanel = false
   //如果是从单词学习主页过来的，就直接使用；否则等待加载
   if (runtimeStore.routeData) {
     await initData(null, true)

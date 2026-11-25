@@ -59,9 +59,12 @@ export default defineNuxtConfig({
         lang: 'zh-CN',
       },
       link: [{ rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }],
+      // viewport-fit=cover：讓 iPhone 的 env(safe-area-inset-*) 有值，避開瀏海與 home 條
+      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' }],
     },
   },
-  // ssr: false,
+  // iOS App（Capacitor）沒有 Node server，打包成純前端 SPA
+  ssr: process.env.TYPEWORDS_APP !== '1',
   routeRules: {
     '/words': { ssr: false },
     '/articles': { ssr: false },
@@ -87,6 +90,8 @@ export default defineNuxtConfig({
   },
   // 模块
   modules: ['@pinia/nuxt', '@unocss/nuxt', 'unplugin-icons/nuxt', '@vue-macros/nuxt', '@nuxtjs/i18n', '@nuxt/image'],
+  // iOS App 沒有 server 可以即時處理圖片（/_ipx 會 404），改成直接使用原圖
+  image: process.env.TYPEWORDS_APP === '1' ? { provider: 'none' } : {},
   macros: {
     betterDefine: false,
   },
