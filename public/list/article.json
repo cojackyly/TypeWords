@@ -2,8 +2,8 @@
   {
     "id": 246,
     "enName": "nce1",
-    "name": "新概念英语1",
-    "description": "第一册《英语初阶》讲练基本语音、语调、语法、词法、句法及句型结构，是练好英语基本功的关键。",
+    "name": "新概念英語1",
+    "description": "第一冊《英語初階》講練基本語音、語調、語法、詞法、句法及句型結構，是練好英語基本功的關鍵。",
     "categoryId": 4,
     "url": "NCE_1.json",
     "length": 72,
@@ -18,7 +18,7 @@
     "updatedAt": "2026-06-03 15:27:15.113708",
     "cover": "\/imgs\/covers\/nce-1.png",
     "hidden": false,
-    "category": "文章学习",
-    "tags": ["新概念英语"]
+    "category": "文章學習",
+    "tags": ["新概念英語"]
   }
 ]

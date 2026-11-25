@@ -3,7 +3,7 @@
     "id": 1,
     "enName": "cet4",
     "name": "CET-4",
-    "description": "大学英语四级词库",
+    "description": "大學英語四級詞庫",
     "categoryId": 1,
     "url": "CET4_T.json",
     "length": 2607,
@@ -18,9 +18,9 @@
     "updatedAt": "2026-06-03 15:27:15.113708",
     "cover": null,
     "hidden": false,
-    "category": "中国考试",
+    "category": "中國考試",
     "tags": [
-      "大学英语"
+      "大學英語"
     ]
   },
   {

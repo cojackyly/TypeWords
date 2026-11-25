@@ -6,6 +6,7 @@ import Components from 'unplugin-vue-components/vite'
 import IconsResolver from 'unplugin-icons/resolver'
 import { execSync } from 'child_process'
 import { defineNuxtConfig } from 'nuxt/config'
+import { zhTwPlugin } from './build/vite-plugin-zh-tw'
 
 let latestCommitHash = ''
 let latestCommitTime = ''
@@ -76,6 +77,8 @@ export default defineNuxtConfig({
   },
   vite: {
     plugins: [
+      // 打包時把 app/ 的中文轉成台灣繁體（原始碼不動）
+      zhTwPlugin(resolve(__dirname, 'app')),
       Components({
         resolvers: [
           IconsResolver({

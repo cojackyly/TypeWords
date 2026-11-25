@@ -87,6 +87,7 @@
     "git-last-commit": "^1.0.1",
     "gulp": "^5.0.1",
     "husky": "^8.0.3",
+    "opencc-js": "^1.4.2",
     "prettier": "^3.7.4",
     "rollup-plugin-visualizer": "^5.14.0",
     "sass": "^1.89.2",
