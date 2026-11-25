@@ -30,6 +30,8 @@ export function resolvePracticeViewDefaults(practiceType: WordPracticeType): {
       return { isWordMasked: false, isShowTranslate: true }
     case WordPracticeType.PalaceRecall:
       return { isWordMasked: true, isShowTranslate: false }
+    case WordPracticeType.Choice:
+      return { isWordMasked: true, isShowTranslate: false }
     case WordPracticeType.Identify:
       return { isWordMasked: false, isShowTranslate: false }
     default:

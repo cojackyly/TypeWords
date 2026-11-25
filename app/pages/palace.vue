@@ -5,6 +5,8 @@ import {
   getLocusScene,
   getPalaceKey,
   getWordImage,
+  getShortMeaning,
+  getWordPicture,
   WORDS_PER_LOCUS,
   type PalaceSlotItem,
 } from '@/core/composables/practice-words/practice-palace.ts'
@@ -50,7 +52,7 @@ const groups = $computed(() => {
         scene: getLocusScene(palace, l.locus),
         slots: Array.from({ length: WORDS_PER_LOCUS }, (_, slot): PalaceSlotItem | null => {
           const hit = l.words.find(x => x.slot === slot)
-          return hit ? { image: getWordImage(hit.word), word: hit.word.word, state: 'active' } : null
+          return hit ? { image: getWordImage(hit.word), word: hit.word.word, meaning: getShortMeaning(hit.word), picture: getWordPicture(hit.word), state: 'active' } : null
         }),
       })),
     }))

@@ -70,6 +70,7 @@ export interface SettingState {
   ignoreSymbol: boolean // 过滤符号
   practiceSentence: boolean // 练习例句
   practiceCloze: boolean // 學習流程加入「例句填空」
+  wordGroupSize: number // 每次練習的新字數（分小組學；每日目標分成幾組做完）
   practicePalace: boolean // 學習流程加入「記憶宮殿」（宮殿放置＋宮殿回想）
   palaces: Palace[] // 記憶宮殿路線
   activePalaceId: string // 目前使用的宮殿
@@ -149,6 +150,7 @@ export const getDefaultSettingState = (): SettingState => ({
   ignoreSymbol: true,
   practiceSentence: false,
   practiceCloze: true,
+  wordGroupSize: 5,
   practicePalace: true,
   palaces: createDefaultPalaces(),
   activePalaceId: 'home',

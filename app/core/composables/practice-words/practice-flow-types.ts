@@ -27,6 +27,7 @@ export type PracticeStepTemplateId =
   | 'cloze'
   | 'palacePlace'
   | 'palaceRecall'
+  | 'choice'
 
 /** Step Template 的名称和练习类型元数据。 */
 export interface PracticeStepTemplate {

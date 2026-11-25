@@ -1,4 +1,4 @@
-import { getCurrentStudyWord } from '@/core/hooks/dict.ts'
+import { getCurrentStudyWord, getWordGroupSize } from '@/core/hooks/dict.ts'
 import { useBaseStore } from '@/core/stores/base.ts'
 import { useSettingStore } from '@/core/stores/setting.ts'
 import type { TaskWords, Word } from '@/core/types/types.ts'
@@ -54,7 +54,7 @@ export function createStudyTask(): StudyTaskResult {
   return addRandomReviewWhenNoDue(getCurrentStudyWord(), {
     words: store.sdict.words,
     lastLearnIndex: store.sdict.lastLearnIndex,
-    perDayStudyNumber: store.sdict.perDayStudyNumber,
+    perDayStudyNumber: getWordGroupSize(store.sdict.perDayStudyNumber, settingStore.wordGroupSize),
     wordReviewRatio: settingStore.wordReviewRatio,
     ignoreSet: store.getIgnoreWordsSet(),
     enabled: settingStore.autoAddRandomReviewWhenNoDue,

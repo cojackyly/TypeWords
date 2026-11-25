@@ -129,6 +129,7 @@ export enum WordPracticeType {
   Cloze, // 例句填空：在例句的空格打出單字
   PalacePlace, // 記憶宮殿：把單字放到路線上的位置（只看不打）
   PalaceRecall, // 記憶宮殿：只給位置，打出放在那裡的單字
+  Choice, // 選擇題：看中文和圖，點選正確的英文（不用打字）
 }
 
 //练习类型

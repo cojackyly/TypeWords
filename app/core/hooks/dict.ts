@@ -135,6 +135,12 @@ export function useArticleOptions() {
   }
 }
 
+/** 每次練習的新字數：不超過每日目標；沒設定（舊資料）時等於每日目標 */
+export function getWordGroupSize(perDayStudyNumber: number, wordGroupSize?: number) {
+  const perDay = Math.max(1, perDayStudyNumber || 1)
+  return wordGroupSize ? Math.max(1, Math.min(perDay, wordGroupSize)) : perDay
+}
+
 export function getCurrentStudyWord(): TaskWords {
   const store = useBaseStore()
   let data: TaskWords = { new: [], review: [] }
@@ -151,7 +157,8 @@ export function getCurrentStudyWord(): TaskWords {
     const settingStore = useSettingStore()
     //忽略列表：简单词或已掌握
     const ignoreSet = [store.allIgnoreWordsSet, store.knownWordsSet][settingStore.ignoreSimpleWord ? 0 : 1]
-    const perDay = dict.perDayStudyNumber
+    // 分小組學：每次練習只取一組新字（每日目標分成幾組做完），複習上限也以一組計算
+    const perDay = getWordGroupSize(dict.perDayStudyNumber, settingStore.wordGroupSize)
     const start = isTest ? 1 : dict.lastLearnIndex
     const complete = isTest ? true : dict.complete
     const isEnd = start >= dict.length - 1 && dict.length !== 1

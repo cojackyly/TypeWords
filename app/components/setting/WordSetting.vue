@@ -31,6 +31,9 @@ const settingStore = useSettingStore()
       </div>
     </SettingItem>
 
+    <SettingItem :title="$t('word_group_size')" :desc="$t('word_group_size_desc')">
+      <InputNumber :min="1" :max="50" v-model="settingStore.wordGroupSize" />
+    </SettingItem>
     <SettingItem :title="$t('review_ratio')" :desc="$t('review_ratio_desc')">
       <InputNumber :min="0" :max="10" v-model="settingStore.wordReviewRatio" />
     </SettingItem>

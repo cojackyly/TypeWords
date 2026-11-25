@@ -23,6 +23,7 @@ export const STEP_TEMPLATE_META: Record<PracticeStepTemplateId, PracticeStepTemp
   cloze: { id: 'cloze', label: 'cloze', practiceType: WordPracticeType.Cloze },
   palacePlace: { id: 'palacePlace', label: 'palace_place', practiceType: WordPracticeType.PalacePlace },
   palaceRecall: { id: 'palaceRecall', label: 'palace_recall', practiceType: WordPracticeType.PalaceRecall },
+  choice: { id: 'choice', label: 'choice', practiceType: WordPracticeType.Choice },
 }
 
 export function materializeWordAdvance(config?: PracticeWordAdvanceConfig): WordAdvanceRule {
@@ -55,7 +56,10 @@ const DEFAULT_ON_END: PracticeEndAction[] = [WRONG_WORD_CLEAR_ACTION]
 /** 内置流程字典：key 为 flowId，存入 sessionSnapshot.flowId */
 export const BUILTIN_FLOWS: Record<string, PracticeFlowConfig> = {
   /**
-   * System 模式：新词（跟写7词一组→听写→默写）+ 复习（自测→听写→默写）
+   * System 模式：先複習（自測→選擇題→默寫），再學一組新詞
+   * （宮殿放置→跟寫→選擇題→例句填空→宮殿回想）。
+   * - 先複習：到期的字先做完，才加新字，避免越積越多
+   * - 選擇題取代聽寫與默寫：手機上打字慢，新詞每個字打 3 次（原本 5 次）
    */
   system: {
     id: 'system',
@@ -63,6 +67,27 @@ export const BUILTIN_FLOWS: Record<string, PracticeFlowConfig> = {
     mode: WordPracticeMode.System,
     label: 'smart_learning',
     nodes: [
+      {
+        id: 'review',
+        label: 'review',
+        source: 'taskReview',
+        steps: [
+          {
+            templateId: 'identify',
+            onEnd: DEFAULT_ON_END,
+          },
+          {
+            templateId: 'choice',
+            shuffleOnEnter: true,
+            onEnd: DEFAULT_ON_END,
+          },
+          {
+            templateId: 'dictation',
+            shuffleOnEnter: true,
+            onEnd: DEFAULT_ON_END,
+          },
+        ],
+      },
       {
         id: 'new',
         label: 'new_words',
@@ -79,13 +104,9 @@ export const BUILTIN_FLOWS: Record<string, PracticeFlowConfig> = {
             onEnd: DEFAULT_ON_END,
             shuffleOnEnter: false,
           },
+          // 選擇題：看中文和圖，點選英文（不用打字）
           {
-            templateId: 'listen',
-            shuffleOnEnter: true,
-            onEnd: DEFAULT_ON_END,
-          },
-          {
-            templateId: 'dictation',
+            templateId: 'choice',
             shuffleOnEnter: true,
             onEnd: DEFAULT_ON_END,
           },
@@ -99,27 +120,6 @@ export const BUILTIN_FLOWS: Record<string, PracticeFlowConfig> = {
           {
             templateId: 'palaceRecall',
             shuffleOnEnter: false,
-            onEnd: DEFAULT_ON_END,
-          },
-        ],
-      },
-      {
-        id: 'review',
-        label: 'review',
-        source: 'taskReview',
-        steps: [
-          {
-            templateId: 'identify',
-            onEnd: DEFAULT_ON_END,
-          },
-          {
-            templateId: 'listen',
-            shuffleOnEnter: true,
-            onEnd: DEFAULT_ON_END,
-          },
-          {
-            templateId: 'dictation',
-            shuffleOnEnter: true,
             onEnd: DEFAULT_ON_END,
           },
         ],

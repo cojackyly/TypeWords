@@ -61,6 +61,8 @@ import {
 import dayjs from 'dayjs'
 import { getActiveCustomFlowId, getUserFlow } from '@/core/composables/practice-words/practice-flow-runtime.ts'
 import { createStudyTask } from '@/core/composables/practice-words/study-task.ts'
+import { getWordGroupSize } from '@/core/hooks/dict.ts'
+import TodayPlanCard from '@/components/word/TodayPlanCard.vue'
 import LanSyncButton from '@/components/LanSyncButton.vue'
 import { useI18n } from 'vue-i18n'
 
@@ -396,6 +398,31 @@ const totalDay = $computed(() => {
   return set.size
 })
 
+// ============ 首頁「今天」卡 ============
+/** 今天在這本詞典學完的新字數（只算已完成的練習） */
+const todayNewCount = $computed(() =>
+  total(
+    (store.sdict.statistics ?? []).filter(v => dayjs(v.startDate).isSame(dayjs(), 'day')),
+    'new'
+  )
+)
+
+/** 連續學習天數：從今天往回數；今天還沒學時從昨天開始數，中間斷一天就停 */
+const streakDays = $computed(() => {
+  const days = new Set(allWordStatistics.map(v => dayjs(v.startDate).format('YYYY-MM-DD')))
+  for (const key of cacheDaySpendMap.keys()) days.add(key)
+  let cursor = dayjs()
+  if (!days.has(cursor.format('YYYY-MM-DD'))) cursor = cursor.subtract(1, 'day')
+  let count = 0
+  while (days.has(cursor.format('YYYY-MM-DD'))) {
+    count++
+    cursor = cursor.subtract(1, 'day')
+  }
+  return count
+})
+
+const wordGroupSize = $computed(() => getWordGroupSize(store.sdict.perDayStudyNumber, settingStore.wordGroupSize))
+
 const studyDayDialogTitle = $computed(() =>
   selectedStudyDateKey ? `${dayjs(selectedStudyDateKey).format('YYYY年M月D日')} 学习记录` : ''
 )
@@ -585,6 +612,20 @@ onUnmounted(() => {
       <a class="mr-4" :href="`${Origin}/words?from_old_site=1`">{{ Origin }}</a
       >当前 2study.top 域名将在 7 月 3 号停止使用
     </div>
+
+    <!-- 今天：進度、連續天數、一鍵開始 -->
+    <TodayPlanCard
+      v-if="store.sdict.id"
+      :today-new="todayNewCount"
+      :daily-goal="store.sdict.perDayStudyNumber"
+      :group-size="wordGroupSize"
+      :streak-days="streakDays"
+      :review-count="practiceData?.taskWords?.review?.length ?? 0"
+      :new-count="practiceData?.taskWords?.new?.length ?? 0"
+      :has-unfinished="isSaveData"
+      :loading="loading"
+      @start="systemPractice"
+    />
 
     <div class="card flex flex-col md:flex-row gap-4">
       <div class="flex-1 flex flex-col justify-between">

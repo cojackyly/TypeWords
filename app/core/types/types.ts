@@ -13,6 +13,8 @@ export type Word = {
   word: string
   /** 記憶宮殿用的單字圖：1–3 個 Emoji 組成的畫面（詞庫內建） */
   emoji?: string
+  /** 意思插圖：public/images/word/ 底下的相對路徑，例如 toeic/appointment.jpg */
+  image?: string
   phonetic0: string
   phonetic1: string
   trans: {
