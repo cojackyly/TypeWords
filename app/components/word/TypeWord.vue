@@ -51,6 +51,7 @@ import {
   getWordImage,
   getShortMeaning,
   getWordPicture,
+  makePalaceSlotItem,
   type PalaceSlotItem,
   getPalaceKey,
   makePalaceBatch,
@@ -313,11 +314,8 @@ const palaceInfo = computed(() => {
   }
 })
 const palaceScene = computed(() => getLocusScene(palaceInfo.value?.palace, palaceInfo.value?.locus ?? 0))
-/** 整條路線每個位置的場景，給路線地圖用 */
-const palaceRouteScenes = computed(() => {
-  const palace = palaceInfo.value?.palace
-  return (palace?.loci ?? []).map((_, i) => getLocusScene(palace, i))
-})
+/** 整條路線的位置數，給路線地圖用 */
+const palaceRouteCount = computed(() => palaceInfo.value?.palace?.loci.length ?? 0)
 
 /**
  * 場景卡上的兩格：目前這個字＋同一位置的另一個字。
@@ -327,13 +325,7 @@ const palaceSlots = computed<(PalaceSlotItem | null)[]>(() => {
   const info = palaceInfo.value
   if (!info) return []
   const slots: (PalaceSlotItem | null)[] = Array(WORDS_PER_LOCUS).fill(null)
-  slots[info.slot] = {
-    image: getWordImage(props.word),
-    word: props.word.word,
-    meaning: getShortMeaning(props.word),
-    picture: getWordPicture(props.word),
-    state: isPalaceRecall.value && !showWordResult ? 'blank' : 'active',
-  }
+  slots[info.slot] = makePalaceSlotItem(props.word, isPalaceRecall.value && !showWordResult ? 'blank' : 'active')
   const words = practiceData?.words ?? []
   const index = practiceData?.index ?? 0
   for (let slot = 0; slot < WORDS_PER_LOCUS; slot++) {
@@ -341,7 +333,7 @@ const palaceSlots = computed<(PalaceSlotItem | null)[]>(() => {
     // 放置與回想都照路線順序、不打亂，所以同一位置的另一個字就在相鄰位置
     const other: Word | undefined = words[index + (slot - info.slot)]
     if (!other) continue
-    slots[slot] = { image: getWordImage(other), word: other.word, meaning: getShortMeaning(other), picture: getWordPicture(other), state: slot < info.slot ? 'dim' : 'mystery' }
+    slots[slot] = makePalaceSlotItem(other, slot < info.slot ? 'dim' : 'mystery')
   }
   return slots
 })
@@ -589,7 +581,7 @@ useEvents([
         :scene="palaceScene"
         :locus-name="palaceInfo.locusName"
         :locus-index="palaceInfo.locus"
-        :route-scenes="palaceRouteScenes"
+        :route-count="palaceRouteCount"
         :slots="palaceSlots"
         @next="palacePlaceNext"
         @play="onVolumeIconClick"
@@ -610,7 +602,7 @@ useEvents([
 
       <!-- 記憶宮殿：回想（給位置、圖和中文，打出英文） -->
       <div class="palace-recall" v-if="isPalaceRecall && palaceInfo">
-        <PalaceRouteMap :scenes="palaceRouteScenes" :current="palaceInfo.locus" compact />
+        <PalaceRouteMap :count="palaceRouteCount" :current="palaceInfo.locus" compact />
         <Transition name="palace-walk" mode="out-in">
         <PalaceSceneCard
           class="mt-2 palace-recall-scene"

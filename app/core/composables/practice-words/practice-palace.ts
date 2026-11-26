@@ -11,7 +11,7 @@ import { ENV } from '@/core/config/env.ts'
 
 export const WORDS_PER_LOCUS = 2
 
-/** 位置場景（PalaceScene.vue 畫的插圖） */
+/** 位置的家具場景：現在只決定場景卡上兩格的位置與進場動作；背景改用單字的明確場景（Word.scene） */
 export type PalaceSceneKey =
   | 'door'
   | 'shoes'
@@ -118,7 +118,74 @@ export interface PalaceSlotItem {
   meaning: string
   /** 意思插圖網址；沒有時顯示 image（Emoji） */
   picture?: string
+  /** 這個字明確場景的背景圖網址與名稱；抽象字沒有，場景卡就不放背景 */
+  background?: string
+  backgroundLabel?: string
   state: 'active' | 'dim' | 'blank' | 'mystery'
+}
+
+/** 場景 id → 中文名稱（場景卡左上角顯示）。背景圖在 public/images/scene/toeic/<id>.jpg */
+export const PALACE_BACKGROUND_LABELS: Record<string, string> = {
+  'office-reception': '公司櫃台',
+  'office-desk': '辦公室座位區',
+  'copy-room': '影印室',
+  mailroom: '收發室',
+  'meeting-room': '會議室',
+  'break-room': '茶水間',
+  'hr-interview': '面試室',
+  'hr-office': '人資辦公室',
+  'it-room': '電腦機房',
+  boardroom: '董事會議室',
+  negotiation: '談判桌',
+  'conference-hall': '研討會會場',
+  'ad-agency': '廣告公司',
+  bank: '銀行',
+  accounting: '會計室',
+  'stock-market': '證券交易所',
+  factory: '工廠',
+  lab: '實驗室',
+  repair: '維修現場',
+  construction: '工地',
+  warehouse: '倉庫',
+  port: '港口',
+  airport: '機場',
+  hotel: '飯店',
+  sightseeing: '觀光景點',
+  station: '車站',
+  street: '馬路',
+  store: '商店',
+  market: '市集',
+  restaurant: '餐廳',
+  kitchen: '廚房',
+  party: '宴會',
+  theater: '劇院',
+  media: '電視台',
+  stadium: '體育場',
+  gym: '健身房',
+  hospital: '醫院',
+  insurance: '保險公司',
+  court: '法院',
+  government: '市政廳',
+  school: '教室',
+  apartment: '公寓',
+  home: '家裡',
+  neighborhood: '社區',
+  charity: '公益活動',
+}
+
+/** 單字在場景卡上的一格：圖、中文、背景都從單字算出來 */
+export function makePalaceSlotItem(word: Word, state: PalaceSlotItem['state']): PalaceSlotItem {
+  const label = word.scene ? PALACE_BACKGROUND_LABELS[word.scene] : undefined
+  return {
+    image: getWordImage(word),
+    word: word.word,
+    meaning: getShortMeaning(word),
+    picture: getWordPicture(word),
+    // 只有認得的場景才放背景；詞庫寫了不認得的 id 就當作沒有場景
+    background: label ? `${ENV.RESOURCE_URL}/images/scene/toeic/${word.scene}.jpg` : undefined,
+    backgroundLabel: label,
+    state,
+  }
 }
 
 export interface Palace {

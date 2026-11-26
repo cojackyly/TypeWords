@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { PALACE_SCENE_OPTIONS, type PalaceSceneKey } from '@/core/composables/practice-words/practice-palace.ts'
-
 // 記憶宮殿路線地圖：把所有位置連成一條路，看得到整條路線、走過哪些、現在在哪裡。
 // 記憶宮殿靠「沿著路線走」來回想，所以路線本身要一直看得到，不能只是一排小點。
 const props = defineProps<{
-  /** 每個位置的場景（順序就是路線順序） */
-  scenes: PalaceSceneKey[]
+  /** 路線上的位置數 */
+  count: number
   /** 目前的位置（0 起算） */
   current: number
   /** 精簡版：全部排成一排、站點縮小。回想步驟鍵盤打開時畫面很擠，用這個 */
@@ -22,21 +20,20 @@ const STOP_RADIUS = { normal: [13, 17], compact: [10, 13] } as const
 // 位置多於這個數量就折成兩排（蛇形：第一排左到右，第二排右到左，路線才連得起來）
 const SINGLE_ROW_MAX = 6
 
-const sceneIcon = (key: PalaceSceneKey) => PALACE_SCENE_OPTIONS.find(o => o.key === key)?.label.split(' ')[0] ?? '🏠'
-
 const layout = $computed(() => {
-  const count = props.scenes.length
+  const count = props.count
   const perRow = !props.compact && count > SINGLE_ROW_MAX ? Math.ceil(count / 2) : Math.max(1, count)
   const rows = Math.ceil(count / perRow)
   const paddingY = props.compact ? COMPACT_PADDING_Y : PADDING_Y
   const step = perRow > 1 ? (VIEW_WIDTH - PADDING_X * 2) / (perRow - 1) : 0
-  const stops = props.scenes.map((scene, i) => {
+  // 站點只標編號：背景跟著單字的場景走，位置本身不再對應固定的家具
+  const stops = Array.from({ length: count }, (_, i) => {
     const row = Math.floor(i / perRow)
     const col = i % perRow
     // 第二排反向排列，讓上一排的最後一站接到下一排的第一站
     const x = perRow > 1 ? PADDING_X + (row % 2 === 0 ? col : perRow - 1 - col) * step : VIEW_WIDTH / 2
     const y = paddingY + row * ROW_HEIGHT
-    return { x, y, icon: sceneIcon(scene), index: i }
+    return { x, y, index: i }
   })
   const pathOf = (list: typeof stops) => list.map((s, i) => `${i ? 'L' : 'M'}${s.x} ${s.y}`).join(' ')
   return {
@@ -58,14 +55,13 @@ const stateOf = (index: number) => (index < props.current ? 'done' : index === p
     :class="{ compact }"
     :viewBox="`0 0 ${VIEW_WIDTH} ${layout.height}`"
     role="img"
-    :aria-label="`路線共 ${scenes.length} 個位置，現在在第 ${current + 1} 個`"
+    :aria-label="`路線共 ${count} 個位置，現在在第 ${current + 1} 個`"
   >
     <path class="path" :d="layout.fullPath" />
     <path class="path walked" :d="layout.walkedPath" />
     <g v-for="stop in layout.stops" :key="stop.index" class="stop" :class="stateOf(stop.index)">
       <circle :cx="stop.x" :cy="stop.y" :r="radius[stateOf(stop.index) === 'on' ? 1 : 0]" />
-      <text :x="stop.x" :y="stop.y" class="icon">{{ stop.icon }}</text>
-      <text v-if="!compact" :x="stop.x + 13" :y="stop.y - 11" class="num">{{ stop.index + 1 }}</text>
+      <text :x="stop.x" :y="stop.y" class="icon">{{ stop.index + 1 }}</text>
     </g>
   </svg>
 </template>
@@ -102,17 +98,12 @@ $gold: #b45309;
     transition: r 0.3s;
   }
 
+  // 站點編號
   .icon {
-    font-size: 14px;
-    text-anchor: middle;
-    dominant-baseline: central;
-    opacity: 0.45;
-  }
-
-  .num {
-    font-size: 9px;
+    font-size: 12px;
     font-weight: 700;
     text-anchor: middle;
+    dominant-baseline: central;
     fill: var(--color-font-3, #888);
   }
 
@@ -123,16 +114,16 @@ $gold: #b45309;
     }
 
     .icon {
-      opacity: 1;
+      fill: $gold;
     }
   }
 
   .compact & .icon {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .compact &.on .icon {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   &.on {
@@ -143,13 +134,8 @@ $gold: #b45309;
     }
 
     .icon {
-      font-size: 18px;
-      opacity: 1;
-    }
-
-    .num {
+      font-size: 15px;
       fill: $gold;
-      font-size: 11px;
     }
   }
 }

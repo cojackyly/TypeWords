@@ -19,6 +19,8 @@ export type Word = {
   groupSentence?: { id: number; en: string; cn: string; words: string[] }
   /** 意思插圖：public/images/word/ 底下的相對路徑，例如 toeic/appointment.jpg */
   image?: string
+  /** 明確場景的 id（例如 airport），記憶宮殿用它的背景圖；抽象字沒有明確場景，不放背景 */
+  scene?: string
   phonetic0: string
   phonetic1: string
   trans: {

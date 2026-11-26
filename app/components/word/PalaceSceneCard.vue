@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import PalaceScene from './PalaceScene.vue'
 import {
   PALACE_SCENE_SLOTS,
   type PalaceSceneKey,
   type PalaceSlotItem,
 } from '@/core/composables/practice-words/practice-palace.ts'
 
-// 記憶宮殿場景卡：位置插圖 + 疊在上面的單字圖（每格狀態見 PalaceSlotItem）
+// 記憶宮殿場景卡：單字明確場景的背景圖 + 疊在上面的單字圖（每格狀態見 PalaceSlotItem）
+// scene（位置的家具場景）現在只用來決定兩格的位置與進場動作，不再畫出來
 // 大卡片上目前的字（active）會用動作進場、撞到場景物件，場景跟著震一下
 const props = withDefaults(
   defineProps<{
@@ -22,14 +22,26 @@ const props = withDefaults(
 const slotSpecs = $computed(() => PALACE_SCENE_SLOTS[props.scene] ?? PALACE_SCENE_SLOTS.room)
 /** 換字時用來重播動畫（key 改變 → 元素重建 → 動畫從頭跑） */
 const activeWord = $computed(() => (props.size === 'large' ? props.slots.find(s => s?.state === 'active')?.word ?? '' : ''))
+
+/**
+ * 背景跟著單字走：大卡片用目前這個字（看的或回想中的）的明確場景，例如 boarding → 機場。
+ * 這個字沒有明確場景（抽象字）就不放背景，不拿無關的家具場景來湊。
+ * 小卡片（宮殿總覽）沒有「目前的字」，用這一格裡第一個有場景的字。
+ */
+const backgroundItem = $computed(() => {
+  if (props.size === 'large') return props.slots.find(s => s && (s.state === 'active' || s.state === 'blank'))
+  return props.slots.find(s => s?.background)
+})
 </script>
 
 <template>
   <div class="scene-card" :class="size">
     <div class="scene-wrap" :class="{ impact: !!activeWord }" :key="activeWord">
-      <PalaceScene :scene="scene" />
+      <img v-if="backgroundItem?.background" class="scene-bg" :src="backgroundItem.background" alt="" draggable="false" />
     </div>
-    <div class="locus-label">{{ locusIndex + 1 }} {{ locusName }}</div>
+    <!-- 有背景時寫出場景名稱（例如「機場」），沒有就只寫位置編號。
+         不顯示 locusName：宮殿的位置名稱是家具（大門、鞋櫃），和單字的場景無關 -->
+    <div class="locus-label">{{ [locusIndex + 1, backgroundItem?.backgroundLabel].filter(Boolean).join(' ') }}</div>
     <template v-for="(item, i) in slots" :key="i + (item?.word ?? '') + (item?.state ?? '')">
       <div
         v-if="item"
@@ -120,6 +132,13 @@ const activeWord = $computed(() => (props.size === 'large' ? props.slots.find(s 
   // 單字圖撞到場景物件的瞬間（約 0.45 秒），整個場景震一下
   &.impact {
     animation: palace-impact 0.3s 0.45s ease-out;
+  }
+
+  .scene-bg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
   }
 }
 

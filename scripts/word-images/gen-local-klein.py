@@ -3,7 +3,7 @@
 用本機的 FLUX.2 klein 4B（mflux，Apple MLX）替單字產生「意思插圖」。
 
 用法（mflux 裝在獨立的虛擬環境）：
-  ~/WorkSpace/tools/mflux-venv/bin/python scripts/word-images/gen-local-klein.py <輸出資料夾> [單字數上限] [畫面描述檔]
+  ~/WorkSpace/tools/mflux-venv/bin/python scripts/word-images/gen-local-klein.py <輸出資料夾> [單字數上限] [畫面描述檔] [--scene]
 
 - 畫面描述預設讀 scripts/word-images/prompts-toeic.json（單字 → 英文場景描述）
 - 只重產部分單字時，第 3 個參數給只含那些字的描述檔（格式相同）；單字數上限給 0 代表不限
@@ -36,6 +36,14 @@ STYLE = (
     "flat vector illustration, friendly cartoon style, bright clear colors, simple clean shapes, "
     "plain white background, centered, no text, no letters, no words, any signs, papers or screens are blank"
 )
+# 背景模式（第 4 個參數給 --scene）：記憶宮殿場景卡的背景圖。
+# 要畫滿整個地點、顏色淡，疊在上面的單字插圖才看得清楚；比例接近場景卡（390:300）
+SCENE_STYLE = (
+    "wide view of the whole place, flat vector illustration, soft pastel colors, low contrast, simple shapes, "
+    "empty open floor in the middle, no people in the foreground, no text, no letters, no words, any signs or screens are blank"
+)
+SCENE_WIDTH_PX = 512
+SCENE_HEIGHT_PX = 384
 
 
 def file_name_of(word: str) -> str:
@@ -50,6 +58,9 @@ def main() -> int:
     out_dir = Path(sys.argv[1]).expanduser()
     limit = (int(sys.argv[2]) or None) if len(sys.argv) > 2 else None
     prompts_file = Path(sys.argv[3]).expanduser() if len(sys.argv) > 3 else Path(__file__).parent / "prompts-toeic.json"
+    scene_mode = len(sys.argv) > 4 and sys.argv[4] == "--scene"
+    style = SCENE_STYLE if scene_mode else STYLE
+    width, height = (SCENE_WIDTH_PX, SCENE_HEIGHT_PX) if scene_mode else (SIZE_PX, SIZE_PX)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     prompts = json.loads(prompts_file.read_text(encoding="utf-8"))
@@ -80,9 +91,9 @@ def main() -> int:
             try:
                 image = model.generate_image(
                     seed=SEED,
-                    prompt=f"{scene}. {STYLE}",
-                    width=SIZE_PX,
-                    height=SIZE_PX,
+                    prompt=f"{scene}. {style}",
+                    width=width,
+                    height=height,
                     guidance=GUIDANCE,
                     num_inference_steps=STEPS,
                     scheduler="flow_match_euler_discrete",

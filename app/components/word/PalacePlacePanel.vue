@@ -11,8 +11,8 @@ defineProps<{
   scene: PalaceSceneKey
   locusName: string
   locusIndex: number
-  /** 整條路線每個位置的場景，給路線地圖用 */
-  routeScenes: PalaceSceneKey[]
+  /** 整條路線的位置數，給路線地圖用 */
+  routeCount: number
   slots: (PalaceSlotItem | null)[]
 }>()
 
@@ -24,7 +24,7 @@ const emit = defineEmits<{
 
 <template>
   <div class="palace-place" data-no-refocus>
-    <PalaceRouteMap :scenes="routeScenes" :current="locusIndex" />
+    <PalaceRouteMap :count="routeCount" :current="locusIndex" />
 
     <!-- 換位置時像走過去一樣滑動；同一個位置的第 2 個字不滑動（key 不變） -->
     <Transition name="palace-walk" mode="out-in">
