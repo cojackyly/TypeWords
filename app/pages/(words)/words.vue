@@ -399,10 +399,10 @@ const totalDay = $computed(() => {
 })
 
 // ============ 首頁「今天」卡 ============
-/** 今天在這本詞典學完的新字數（只算已完成的練習） */
+/** 今天在這本詞典學完的新字數：只算做完的練習（completed），中途放棄的那一輪不算 */
 const todayNewCount = $computed(() =>
   total(
-    (store.sdict.statistics ?? []).filter(v => dayjs(v.startDate).isSame(dayjs(), 'day')),
+    (store.sdict.statistics ?? []).filter(v => v.completed && dayjs(v.startDate).isSame(dayjs(), 'day')),
     'new'
   )
 )

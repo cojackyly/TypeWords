@@ -10,6 +10,7 @@
 - 每張存成 <輸出資料夾>/<單字>.jpg；已存在就略過，中斷後重跑會接續
 - 模型權重來自 Hugging Face 官方 repo black-forest-labs/FLUX.2-klein-4B（Apache 2.0）
 """
+import hashlib
 import json
 import subprocess
 import sys
@@ -60,6 +61,12 @@ def main() -> int:
     config = ConfigResolution.resolve_restricted(MODEL_NAME, MODEL_NAME, model_path=None, extra_keys=family, base_model=None)
     model = Flux2Klein(model_config=config, quantize=None, model_path=None)
 
+    # 防重複：輸出資料夾裡每張圖的內容雜湊。新圖和任何一張相同就立刻停下，
+    # 不會再像 2026-11-25 那樣跑完 1,636 張才發現全部一樣
+    def digest(path: Path) -> str:
+        return hashlib.md5(path.read_bytes()).hexdigest()
+
+    seen = {digest(p): p.name for p in out_dir.glob("*.jpg")}
     failed = []
     started = time.time()
     with tempfile.TemporaryDirectory() as tmp:
@@ -86,6 +93,12 @@ def main() -> int:
                     capture_output=True,
                 )
                 png.unlink()
+                new_hash = digest(target)
+                if new_hash in seen:
+                    target.unlink()
+                    print(f"✗ {word} 的圖和 {seen[new_hash]} 完全相同，腳本有問題，停止產圖", flush=True)
+                    return 3
+                seen[new_hash] = target.name
                 elapsed = time.time() - started
                 print(f"✓ {i}/{len(todo)} {word}（平均每張 {elapsed / i:.1f} 秒）", flush=True)
             except Exception as e:  # 單張失敗不中斷整批

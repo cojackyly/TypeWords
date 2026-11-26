@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Word } from '@/core/types/types.ts'
 import PalaceSceneCard from './PalaceSceneCard.vue'
+import PalaceRouteMap from './PalaceRouteMap.vue'
+import { getKKPhonetic } from '@/core/utils/phonetic.ts'
 import type { PalaceSceneKey, PalaceSlotItem } from '@/core/composables/practice-words/practice-palace.ts'
 
 // 記憶宮殿「放置」：單字圖住進位置場景，只看和想像，不打字
@@ -9,7 +11,8 @@ defineProps<{
   scene: PalaceSceneKey
   locusName: string
   locusIndex: number
-  locusCount: number
+  /** 整條路線每個位置的場景，給路線地圖用 */
+  routeScenes: PalaceSceneKey[]
   slots: (PalaceSlotItem | null)[]
 }>()
 
@@ -21,20 +24,24 @@ const emit = defineEmits<{
 
 <template>
   <div class="palace-place" data-no-refocus>
-    <div class="route">
-      <span
-        v-for="i in locusCount"
-        :key="i"
-        :class="i - 1 < locusIndex ? 'done' : i - 1 === locusIndex ? 'on' : ''"
-      ></span>
-    </div>
+    <PalaceRouteMap :scenes="routeScenes" :current="locusIndex" />
 
-    <PalaceSceneCard class="mt-3" :scene="scene" :locus-name="locusName" :locus-index="locusIndex" :slots="slots" />
+    <!-- 換位置時像走過去一樣滑動；同一個位置的第 2 個字不滑動（key 不變） -->
+    <Transition name="palace-walk" mode="out-in">
+      <PalaceSceneCard
+        class="mt-2"
+        :key="locusIndex"
+        :scene="scene"
+        :locus-name="locusName"
+        :locus-index="locusIndex"
+        :slots="slots"
+      />
+    </Transition>
 
     <div class="word-card">
       <div class="w">{{ word.word }}</div>
       <div class="ph" @click="emit('play')">
-        {{ word.phonetic1 || word.phonetic0 ? `/${word.phonetic1 || word.phonetic0}/` : '' }} 🔊
+        {{ getKKPhonetic(word) ? `[${getKKPhonetic(word)}]` : '' }} 🔊
       </div>
       <div class="tr" v-if="word.trans[0]">
         <span class="pos">{{ word.trans[0].pos }}</span> {{ word.trans[0].cn }}
@@ -58,27 +65,6 @@ $gold: #b45309;
   text-align: center;
 }
 
-.route {
-  display: flex;
-  gap: 0.35rem;
-  justify-content: center;
-
-  span {
-    width: 1.4rem;
-    height: 0.35rem;
-    border-radius: 0.2rem;
-    background: var(--color-item-border);
-
-    &.done {
-      background: #fcd34d;
-    }
-
-    &.on {
-      background: $gold;
-    }
-  }
-}
-
 .word-card {
   background: var(--color-second);
   border-radius: 1rem;
@@ -100,6 +86,11 @@ $gold: #b45309;
   .tr {
     font-size: 0.95rem;
     margin-top: 0.2rem;
+    // 翻譯很長時最多 2 行，下面的按鈕才不會被推出畫面
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 
     .pos {
       color: var(--color-select-bg, #3b82f6);

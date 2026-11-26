@@ -17,6 +17,7 @@ import { usePracticeStore } from '@/core/stores/practice.ts'
 import { WordPracticeMode } from '@/core/types/enum.ts'
 import { emitter, EventKey } from '@/core/utils/eventBus.ts'
 import { cloneDeep, shuffle } from '@/core/utils'
+import { sortByGroupSentence } from './practice-cloze.ts'
 import { getFlowIdForMode, GROUP_SIZE } from './practice-flow-config.ts'
 import {
   createPracticeFlowRuntime,
@@ -238,12 +239,13 @@ export function createPracticeWordNavigator(deps: NavigatorDeps) {
   function goToCursor(
     newCursor: PracticeFlowCursor,
     originList: Word[],
-    options: { log?: string; resetNodeWords?: boolean; shuffle?: boolean } = {}
+    options: { log?: string; resetNodeWords?: boolean; shuffle?: boolean; order?: 'groupSentence' } = {}
   ) {
     const data = deps.getPracticeData()
     const list = originList.filter(v => !deps.checkWordIsNeedNext(v))
     if (options.resetNodeWords) nodeWorkingWords = [...list]
-    const displayList = options.shuffle ? shuffle([...list]) : [...list]
+    const displayList =
+      options.order === 'groupSentence' ? sortByGroupSentence(list) : options.shuffle ? shuffle([...list]) : [...list]
     console.log(options.log || `[Nav] → cursor ${newCursor.nodeIndex}:${newCursor.stepIndex}`)
     activeCursor.value = newCursor
     data.words = displayList
@@ -289,6 +291,7 @@ export function createPracticeWordNavigator(deps: NavigatorDeps) {
       goToCursor(nextCursor, list, {
         resetNodeWords: changedNode,
         shuffle: nextStep.shuffleOnEnter ?? false,
+        order: nextStep.orderOnEnter,
       })
       return false
     }

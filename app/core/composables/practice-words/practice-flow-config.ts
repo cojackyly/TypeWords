@@ -110,10 +110,12 @@ export const BUILTIN_FLOWS: Record<string, PracticeFlowConfig> = {
             shuffleOnEnter: true,
             onEnd: DEFAULT_ON_END,
           },
-          // 例句填空：在例句中回想新詞（可在單字設定關閉）
+          // 組句填空：同一組的字搭配造的句子，一句有好幾個空格，照句中順序填（可在單字設定關閉）
+          // 沒有組句的詞典退回一般例句
           {
             templateId: 'cloze',
             shuffleOnEnter: true,
+            orderOnEnter: 'groupSentence',
             onEnd: DEFAULT_ON_END,
           },
           // 記憶宮殿：沿著路線回想（不洗牌，照位置順序）

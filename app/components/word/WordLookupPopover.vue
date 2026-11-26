@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingStore } from '@/core/stores/setting.ts'
 import { usePlayWordAudio } from '@/core/hooks/sound.ts'
+import { getKKPhonetic } from '@/core/utils/phonetic.ts'
 import { closeWordLookup, wordLookupState } from '@/core/hooks/useWordLookup.ts'
 import { openWordCollectPicker } from '@/core/hooks/useWordCollectPicker.ts'
 import { getDefaultWord } from '@/core/types/func.ts'
@@ -194,11 +195,8 @@ watch(
         <template v-else-if="wordLookupState.data">
           <div class="flex items-center gap-1 flex-wrap pr-7">
             <span class="text-lg font-medium">{{ wordLookupState.data.word }}</span>
-            <span v-if="settingStore.soundType === 'uk' && wordLookupState.data.phonetic0" class="text-sm color-gray">
-              /{{ wordLookupState.data.phonetic0 }}/
-            </span>
-            <span v-if="settingStore.soundType === 'us' && wordLookupState.data.phonetic1" class="text-sm color-gray">
-              /{{ wordLookupState.data.phonetic1 }}/
+            <span v-if="getKKPhonetic(wordLookupState.data)" class="text-sm color-gray">
+              [{{ getKKPhonetic(wordLookupState.data) }}]
             </span>
             <VolumeIcon :cb="() => playWordAudio(wordLookupState.data!.word)" />
             <BaseIcon @click="openCollect" :title="$t('collect_to_dict')">

@@ -272,7 +272,7 @@ export function usePracticeWordSession(options: PracticeWordSessionOptions) {
       statStore.segments[statStore.segments.length - 1][1] = Date.now()
     }
     reconcilePracticeTimer()
-    flushStatToStore(statStore.$state)
+    flushStatToStore(statStore.$state, true)
 
     for (const [word, wrongTimes] of Object.entries(data.wrongTimesMap)) {
       const rating = data.ratingMap[word] ?? getGradeByWrongTimes(wrongTimes)

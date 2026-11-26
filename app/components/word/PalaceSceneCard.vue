@@ -83,6 +83,24 @@ const activeWord = $computed(() => (props.size === 'large' ? props.slots.find(s 
   }
 }
 
+// 走路轉場：換位置時，舊場景往左滑出、新場景從右滑入（由外層的 <Transition name="palace-walk"> 觸發）
+.scene-card.palace-walk-enter-active,
+.scene-card.palace-walk-leave-active {
+  transition:
+    transform 0.28s ease,
+    opacity 0.28s ease;
+}
+
+.scene-card.palace-walk-enter-from {
+  transform: translateX(45%);
+  opacity: 0;
+}
+
+.scene-card.palace-walk-leave-to {
+  transform: translateX(-45%);
+  opacity: 0;
+}
+
 .locus-label {
   position: absolute;
   left: 0.7rem;
@@ -404,6 +422,11 @@ $pulse: palace-pulse 1.4s 0.9s ease-in-out infinite;
   .slot .tag,
   .scene-wrap {
     animation: none !important;
+  }
+
+  .scene-card.palace-walk-enter-active,
+  .scene-card.palace-walk-leave-active {
+    transition: none;
   }
 }
 </style>

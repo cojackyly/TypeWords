@@ -13,6 +13,10 @@ export type Word = {
   word: string
   /** 記憶宮殿用的單字圖：1–3 個 Emoji 組成的畫面（詞庫內建） */
   emoji?: string
+  /** 這個字在組句裡的意思（短中文）；有的話，場景卡、選擇題都優先顯示它，圖、中文、句子才會是同一個意思 */
+  sense?: string
+  /** 組句：同一組的字互相搭配造的句子，一句裡有好幾個要背的字（words 依句中出現順序） */
+  groupSentence?: { id: number; en: string; cn: string; words: string[] }
   /** 意思插圖：public/images/word/ 底下的相對路徑，例如 toeic/appointment.jpg */
   image?: string
   phonetic0: string
@@ -108,6 +112,8 @@ export interface Statistics {
    * - 'end'    ：多天练习的最后一天
    */
   sessionRole?: 'single' | 'start' | 'middle' | 'end'
+  /** 這一輪練習有做完（true）還是中途放棄後被存下來（沒有這個欄位）。首頁「今天學了幾個新字」只算做完的 */
+  completed?: boolean
 }
 
 export type DictResource = {

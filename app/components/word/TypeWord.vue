@@ -37,12 +37,14 @@ import { useMobileKeyboard } from '@/core/hooks/mobileKeyboard.ts'
 import { vibrateOnTypo } from '@/core/hooks/haptics.ts'
 import { usePracticeStore } from '@/core/stores/practice.ts'
 import { isMobile, shuffle } from '@/core/utils'
-import { findClozeSentences } from '@/core/composables/practice-words/practice-cloze.ts'
+import { getKKPhonetic } from '@/core/utils/phonetic.ts'
+import { findClozeSentences, findGroupClozeSentence } from '@/core/composables/practice-words/practice-cloze.ts'
 import { isWholeWordJudgeType } from '@/core/composables/practice-words/practice-type.ts'
 import { useTTsPlayAudio } from '@/core/hooks/sound.ts'
 import PalacePlacePanel from './PalacePlacePanel.vue'
 import WordChoicePanel from './WordChoicePanel.vue'
 import PalaceSceneCard from './PalaceSceneCard.vue'
+import PalaceRouteMap from './PalaceRouteMap.vue'
 import {
   assignByOrder,
   getLocusScene,
@@ -168,9 +170,17 @@ function onSentencePracticeComplete() {
   emit('complete')
 }
 
+// 這一輪的單字清單與目前位置（組句填空、記憶宮殿、選擇題都會用到，要宣告在它們之前）
+const practiceData = inject<PracticeData | undefined>('practiceData', undefined)
+
 // ============ 例句填空 ============
 const isCloze = computed(() => props.practiceType === WordPracticeType.Cloze)
-const clozeSentences = computed(() => (isCloze.value ? findClozeSentences(props.word) : []))
+// 有組句就用組句（一句多個空格），沒有才用這個字自己的例句
+const clozeSentences = computed(() => {
+  if (!isCloze.value) return []
+  const group = findGroupClozeSentence(props.word, practiceData?.words ?? [], practiceData?.index ?? 0)
+  return group ? [group] : findClozeSentences(props.word)
+})
 // 目前使用第幾句；每個字從不同句開始，「換一句」往下輪
 let clozeIndex = $ref(0)
 let clozeHintUsed = $ref(false)
@@ -234,7 +244,6 @@ const isChoice = computed(() => props.practiceType === WordPracticeType.Choice)
 // 不用打字的步驟：鍵盤收起來，也不自動叫出鍵盤
 const isTapOnlyStep = computed(() => isPalacePlace.value || isChoice.value)
 const isCustomPanel = computed(() => isCloze.value || isPalacePlace.value || isPalaceRecall.value || isChoice.value)
-const practiceData = inject<PracticeData | undefined>('practiceData', undefined)
 
 // 晚於 event.ts 的自動聚焦（100ms）再收起鍵盤（宮殿放置與選擇題共用）
 const PALACE_KEYBOARD_CLOSE_DELAY_MS = 400
@@ -304,6 +313,11 @@ const palaceInfo = computed(() => {
   }
 })
 const palaceScene = computed(() => getLocusScene(palaceInfo.value?.palace, palaceInfo.value?.locus ?? 0))
+/** 整條路線每個位置的場景，給路線地圖用 */
+const palaceRouteScenes = computed(() => {
+  const palace = palaceInfo.value?.palace
+  return (palace?.loci ?? []).map((_, i) => getLocusScene(palace, i))
+})
 
 /**
  * 場景卡上的兩格：目前這個字＋同一位置的另一個字。
@@ -575,7 +589,7 @@ useEvents([
         :scene="palaceScene"
         :locus-name="palaceInfo.locusName"
         :locus-index="palaceInfo.locus"
-        :locus-count="palaceInfo.palace?.loci.length ?? 0"
+        :route-scenes="palaceRouteScenes"
         :slots="palaceSlots"
         @next="palacePlaceNext"
         @play="onVolumeIconClick"
@@ -591,25 +605,22 @@ useEvents([
         :options="choiceOptions"
         @complete="emit('complete')"
         @wrong="emit('wrong')"
-        @play="onVolumeIconClick"
+        @play="playWord(WordPlayTrigger.Manual)"
       />
 
       <!-- 記憶宮殿：回想（給位置、圖和中文，打出英文） -->
       <div class="palace-recall" v-if="isPalaceRecall && palaceInfo">
-        <div class="palace-route">
-          <span
-            v-for="i in palaceInfo.palace?.loci.length ?? 0"
-            :key="i"
-            :class="i - 1 < palaceInfo.locus ? 'done' : i - 1 === palaceInfo.locus ? 'on' : ''"
-          ></span>
-        </div>
+        <PalaceRouteMap :scenes="palaceRouteScenes" :current="palaceInfo.locus" compact />
+        <Transition name="palace-walk" mode="out-in">
         <PalaceSceneCard
-          class="mt-3 palace-recall-scene"
+          class="mt-2 palace-recall-scene"
+          :key="palaceInfo.locus"
           :scene="palaceScene"
           :locus-name="palaceInfo.locusName"
           :locus-index="palaceInfo.locus"
           :slots="palaceSlots"
         />
+        </Transition>
         <div class="palace-recall-q">看圖和中文，打出英文（{{ word.word.length }} 個字母）</div>
         <div class="cloze-gap palace-gap" :class="showWordResult && (typingCoreRef?.isWordRight() ? 'ok' : 'bad')">
           <WordTypingCore
@@ -642,7 +653,12 @@ useEvents([
       <div class="cloze-panel" v-if="isCloze && clozeSentence">
         <div class="cloze-cn">{{ clozeSentence.cn }}</div>
         <div class="cloze-sentence">
-          <span>{{ clozeSentence.before }}</span>
+          <template v-if="clozeSentence.beforeParts">
+            <span v-for="(part, i) in clozeSentence.beforeParts" :key="'b' + i" :class="'cloze-part-' + part.kind">{{
+              part.kind === 'pending' ? '' : part.text
+            }}</span>
+          </template>
+          <span v-else>{{ clozeSentence.before }}</span>
           <span class="cloze-gap" :class="showWordResult && (typingCoreRef?.isWordRight() ? 'ok' : 'bad')">
             <WordTypingCore
               ref="typingCoreRef"
@@ -658,22 +674,30 @@ useEvents([
               @wrong="onTypingCoreWrong"
             />
           </span>
-          <span>{{ clozeSentence.after }}</span>
+          <template v-if="clozeSentence.afterParts">
+            <span v-for="(part, i) in clozeSentence.afterParts" :key="'a' + i" :class="'cloze-part-' + part.kind">{{
+              part.kind === 'pending' ? '' : part.text
+            }}</span>
+          </template>
+          <span v-else>{{ clozeSentence.after }}</span>
         </div>
         <div class="cloze-meta">
+          <b class="cloze-sense">{{ getShortMeaning(word) }}</b> ·
           {{ word.trans?.[0]?.pos ? word.trans[0].pos + ' · ' : '' }}{{ word.word.length }} 個字母
           <template v-if="clozeHintUsed"> · 首字母 {{ word.word[0] }}</template>
-          · 句子 {{ (clozeIndex % clozeSentences.length) + 1 }} / {{ clozeSentences.length }}
+          <template v-if="clozeSentences.length > 1">
+            · 句子 {{ (clozeIndex % clozeSentences.length) + 1 }} / {{ clozeSentences.length }}
+          </template>
         </div>
         <div class="cloze-actions" data-no-refocus @pointerdown.prevent>
           <button class="mobile-chip" @click="playClozeSentence">🔊 聽句子</button>
           <button class="mobile-chip" @click="showClozeHint">💡 提示首字母</button>
-          <button class="mobile-chip" @click="nextClozeSentence">⇆ 換一句</button>
+          <button class="mobile-chip" v-if="clozeSentences.length > 1" @click="nextClozeSentence">⇆ 換一句</button>
           <button class="mobile-chip" @click="emit('skip')">⏭ {{ $t('skip_word') }}</button>
         </div>
         <div class="cloze-result" v-if="showWordResult" :class="typingCoreRef?.isWordRight() ? 'ok' : 'bad'">
           <template v-if="typingCoreRef?.isWordRight()">
-            ✓ <b>{{ word.word }}</b> {{ word.phonetic1 ? '/' + word.phonetic1 + '/' : '' }}
+            ✓ <b>{{ word.word }}</b> {{ getKKPhonetic(word) ? '[' + getKKPhonetic(word) + ']' : '' }}
             {{ word.trans?.[0]?.pos }} {{ clozeShortTrans }}
           </template>
           <template v-else>✗ 正確答案：<b>{{ word.word }}</b></template>
@@ -683,19 +707,9 @@ useEvents([
       <template v-if="!isCustomPanel">
       <!-- 音标 + 发音按钮（通过 slot 传入 VolumeIcon） -->
       <div class="flex gap-1 mt-10 md:mt-30">
-        <div
-          class="phonetic"
-          :class="effective.isWordMasked && 'word-shadow'"
-          v-if="settingStore.soundType === 'uk' && word.phonetic0"
-        >
-          / {{ word.phonetic0 }} /
-        </div>
-        <div
-          class="phonetic"
-          :class="effective.isWordMasked && 'word-shadow'"
-          v-if="settingStore.soundType === 'us' && word.phonetic1"
-        >
-          / {{ word.phonetic1 }} /
+        <!-- 音標一律顯示 KK（由美式 IPA 轉換，見 phonetic.ts） -->
+        <div class="phonetic" :class="effective.isWordMasked && 'word-shadow'" v-if="getKKPhonetic(word)">
+          [ {{ getKKPhonetic(word) }} ]
         </div>
         <VolumeIcon
           :title="`发音(${settingStore.shortcutKeyMap[ShortcutKey.PlayWordPronunciation]})`"
@@ -1029,6 +1043,25 @@ useEvents([
     margin-top: 0.8rem;
   }
 
+  // 組句：同一句裡其他要背的字。填過的顯示綠色，還沒輪到的是灰色空格
+  .cloze-part-filled {
+    color: rgb(22, 163, 74);
+    border-bottom: 3px solid rgb(22, 163, 74);
+  }
+
+  .cloze-part-pending {
+    display: inline-block;
+    width: 4rem;
+    height: 1.2em;
+    vertical-align: bottom;
+    // 還沒輪到的空格要看得出來是空格（原本的邊框色在淺色背景上幾乎看不到）
+    border-bottom: 3px dashed #9ca3af;
+  }
+
+  .cloze-sense {
+    color: #b45309;
+  }
+
   .cloze-gap {
     display: inline-block;
     min-width: 6rem;
@@ -1111,27 +1144,6 @@ useEvents([
   max-width: 36rem;
   margin-top: 1.5rem;
   text-align: center;
-
-  .palace-route {
-    display: flex;
-    gap: 0.35rem;
-    justify-content: center;
-
-    span {
-      width: 1.4rem;
-      height: 0.35rem;
-      border-radius: 0.2rem;
-      background: var(--color-item-border);
-
-      &.done {
-        background: #fcd34d;
-      }
-
-      &.on {
-        background: #b45309;
-      }
-    }
-  }
 
   .palace-locus-idx {
     font-size: 0.8rem;

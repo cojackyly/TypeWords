@@ -98,6 +98,8 @@ export interface PracticeFlowStep {
   /** 词表练完后按顺序执行的动作队列（替代旧 requireWrongWordClear） */
   onEnd?: PracticeEndAction[]
   shuffleOnEnter?: boolean
+  /** 進入這一步時的固定排序；groupSentence＝同一句的字排在一起並照句中順序（組句填空用） */
+  orderOnEnter?: 'groupSentence'
 }
 
 /** Flow 中的一个 Node（一批词 + 多个步骤） */

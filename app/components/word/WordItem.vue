@@ -5,6 +5,7 @@ import { BaseIcon, VolumeIcon } from '@/base'
 import { useWordOptions } from '@/core/hooks/dict.ts'
 import { openWordCollectPicker } from '@/core/hooks/useWordCollectPicker.ts'
 import TranslationList from './TranslationList.vue'
+import { getKKPhonetic } from '@/core/utils/phonetic.ts'
 
 const props = withDefaults(
   defineProps<{
@@ -51,7 +52,7 @@ function openCollectPicker(e: MouseEvent) {
         <div class="item-title">
           <span class="text-sm translate-y-0.5 text-gray-500" v-if="index != undefined">{{ index }}.</span>
           <span class="word" :class="!showWord && 'word-shadow'">{{ item.word }}</span>
-          <span class="phonetic text-gray" :class="!showWord && 'word-shadow'">{{ item.phonetic0 }}</span>
+          <span class="phonetic text-gray" :class="!showWord && 'word-shadow'">{{ getKKPhonetic(item) }}</span>
           <VolumeIcon class="volume" @click="playWordAudio(item.word)"></VolumeIcon>
         </div>
         <TranslationList :pos-space="false" :word="item" :showFull="showWord" v-if="showTranslate" />

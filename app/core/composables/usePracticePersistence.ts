@@ -18,8 +18,9 @@ type DayGroup = { firstStart: number; totalSpend: number; daySegments: [number, 
  * 将进行中的练习统计（PracticeState）落库到 store.sdict.statistics。
  * 用于切换词典或修改练习设置前调用，避免学习记录丢失。
  * @param st - 来自缓存或内存的 PracticeState，为 null / spend=0 时直接返回
+ * @param completed - 這一輪有做完才傳 true；中途放棄的紀錄只保留時間，不算進「今天學完的新字」
  */
-export function flushStatToStore(st: PracticeState | null | undefined): void {
+export function flushStatToStore(st: PracticeState | null | undefined, completed = false): void {
   const hasSegmentSpend = Array.isArray(st?.segments) && st.segments.some(([start, end]) => Number(end) > Number(start))
   if (!st || (!st.spend && !hasSegmentSpend)) return
   const store = useBaseStore()
@@ -29,6 +30,7 @@ export function flushStatToStore(st: PracticeState | null | undefined): void {
     wrong: st.wrong,
     new: st.newWordNumber,
     review: st.reviewWordNumber,
+    ...(completed ? { completed: true } : {}),
   }
 
   if (Array.isArray(st.segments) && st.segments.length > 0) {

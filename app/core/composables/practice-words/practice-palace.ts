@@ -55,52 +55,52 @@ export interface PalaceSlotSpec {
 
 /**
  * 每個場景的兩格：圖放在場景物件上，不再浮在角落。
- * 第 1 格偏下（60% 以下）、第 2 格偏上（不高於 24%）：意思插圖放大時，兩格的圖和標籤（中文＋英文兩行）不重疊也不被切掉。
+ * 第 1 格偏下（66% 以下）、第 2 格偏上（不高於 32%，再高插圖頂端會被卡片切掉）：意思插圖放大時，兩格的圖和標籤（中文＋英文兩行）不重疊也不被切掉。
  */
 export const PALACE_SCENE_SLOTS: Record<PalaceSceneKey, [PalaceSlotSpec, PalaceSlotSpec]> = {
   door: [
-    { left: 38, top: 60, action: 'crash' }, // 撞上大門
-    { left: 64, top: 24, action: 'drop' }, // 從門框上掉下來
+    { left: 38, top: 66, action: 'crash' }, // 撞上大門
+    { left: 64, top: 32, action: 'drop' }, // 從門框上掉下來
   ],
   shoes: [
-    { left: 32, top: 60, action: 'pop' }, // 從鞋櫃裡冒出來
-    { left: 52, top: 24, action: 'zoom' }, // 出現在鏡子裡
+    { left: 32, top: 66, action: 'pop' }, // 從鞋櫃裡冒出來
+    { left: 52, top: 32, action: 'zoom' }, // 出現在鏡子裡
   ],
   sofa: [
-    { left: 32, top: 60, action: 'drop' }, // 一屁股坐上沙發
-    { left: 52, top: 24, action: 'zoom' }, // 從畫框裡跑出來
+    { left: 32, top: 66, action: 'drop' }, // 一屁股坐上沙發
+    { left: 52, top: 32, action: 'zoom' }, // 從畫框裡跑出來
   ],
   tv: [
     { left: 28, top: 68, action: 'bounce' }, // 在電視櫃上彈跳
-    { left: 52, top: 30, action: 'zoom' }, // 從電視螢幕衝出來
+    { left: 52, top: 32, action: 'zoom' }, // 從電視螢幕衝出來
   ],
   table: [
-    { left: 34, top: 60, action: 'drop' }, // 掉進盤子
-    { left: 54, top: 24, action: 'swing' }, // 吊在燈上晃
+    { left: 34, top: 66, action: 'drop' }, // 掉進盤子
+    { left: 54, top: 32, action: 'swing' }, // 吊在燈上晃
   ],
   fridge: [
-    { left: 44, top: 60, action: 'pop' }, // 從冰箱門衝出來
-    { left: 54, top: 24, action: 'shiver' }, // 在冷凍庫凍到發抖
+    { left: 44, top: 66, action: 'pop' }, // 從冰箱門衝出來
+    { left: 54, top: 32, action: 'shiver' }, // 在冷凍庫凍到發抖
   ],
   mirror: [
-    { left: 36, top: 60, action: 'bounce' }, // 在洗手台濺水
-    { left: 52, top: 25, action: 'zoom' }, // 出現在鏡子裡
+    { left: 36, top: 66, action: 'bounce' }, // 在洗手台濺水
+    { left: 52, top: 32, action: 'zoom' }, // 出現在鏡子裡
   ],
   toilet: [
-    { left: 42, top: 60, action: 'pop' }, // 從馬桶冒出來
-    { left: 56, top: 24, action: 'drop' }, // 掉到水箱上
+    { left: 42, top: 66, action: 'pop' }, // 從馬桶冒出來
+    { left: 56, top: 32, action: 'drop' }, // 掉到水箱上
   ],
   bed: [
-    { left: 34, top: 60, action: 'drop' }, // 倒在床上
-    { left: 70, top: 24, action: 'float' }, // 飄在月亮旁邊
+    { left: 34, top: 66, action: 'drop' }, // 倒在床上
+    { left: 70, top: 32, action: 'float' }, // 飄在月亮旁邊
   ],
   desk: [
-    { left: 26, top: 60, action: 'bounce' }, // 在書桌上彈跳
-    { left: 52, top: 30, action: 'zoom' }, // 從螢幕衝出來
+    { left: 26, top: 66, action: 'bounce' }, // 在書桌上彈跳
+    { left: 52, top: 32, action: 'zoom' }, // 從螢幕衝出來
   ],
   room: [
-    { left: 40, top: 60, action: 'drop' }, // 掉到桌上
-    { left: 76, top: 28, action: 'pop' }, // 從櫃子裡冒出來
+    { left: 40, top: 66, action: 'drop' }, // 掉到桌上
+    { left: 76, top: 32, action: 'pop' }, // 從櫃子裡冒出來
   ],
 }
 
@@ -182,10 +182,12 @@ export function getLocusScene(palace: Palace | undefined, locus: number): Palace
 const PALACE_MEANING_MAX_LENGTH = 8
 
 /** 短中文意思：取第一個詞性的第一個意思，例如「操作員；話務員」→「操作員」 */
-export function getShortMeaning(word: Pick<Word, 'trans'>) {
-  // 詞庫的翻譯常帶雜訊：開頭的〈化〉(旅館…) 這類標記、後面黏著「形容詞:carbonous」這類詞形說明，先去掉
+export function getShortMeaning(word: Pick<Word, 'trans' | 'sense'>) {
+  // 組句有指定這個字的意思時直接用，和句子、插圖保持同一個意思
+  if (word.sense?.trim()) return word.sense.trim()
+  // 詞庫的翻譯常帶雜訊：開頭的〈化〉<正式>(旅館…) 這類標記、後面黏著「形容詞:carbonous」這類詞形說明，先去掉
   const cn = (word.trans?.[0]?.cn ?? '')
-    .replace(/^(\s*(〈[^〉]*〉|\([^)]*\)|（[^）]*）|\[[^\]]*\]))+/, '')
+    .replace(/^(\s*(〈[^〉]*〉|<[^>]*>|\([^)]*\)|（[^）]*）|\[[^\]]*\]))+/, '')
     .replace(/(形容詞|副詞|名詞|動詞|複數|過去式|過去分詞|現在分詞|比較級|最高級|第三人稱單數)\s*[:：].*$/, '')
   const first = cn.split(/[；;，,、]/).map(s => s.trim()).find(Boolean) ?? ''
   return first.length > PALACE_MEANING_MAX_LENGTH ? first.slice(0, PALACE_MEANING_MAX_LENGTH) + '…' : first
