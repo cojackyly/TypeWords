@@ -3,9 +3,10 @@
 用本機的 FLUX.2 klein 4B（mflux，Apple MLX）替單字產生「意思插圖」。
 
 用法（mflux 裝在獨立的虛擬環境）：
-  ~/WorkSpace/tools/mflux-venv/bin/python scripts/word-images/gen-local-klein.py <輸出資料夾> [單字數上限]
+  ~/WorkSpace/tools/mflux-venv/bin/python scripts/word-images/gen-local-klein.py <輸出資料夾> [單字數上限] [畫面描述檔]
 
-- 畫面描述讀 scripts/word-images/prompts-toeic.json（單字 → 英文場景描述）
+- 畫面描述預設讀 scripts/word-images/prompts-toeic.json（單字 → 英文場景描述）
+- 只重產部分單字時，第 3 個參數給只含那些字的描述檔（格式相同）；單字數上限給 0 代表不限
 - 模型只載入一次，之後每張圖重複使用，比每張呼叫一次 mflux-generate-flux2 快很多
 - 每張存成 <輸出資料夾>/<單字>.jpg；已存在就略過，中斷後重跑會接續
 - 模型權重來自 Hugging Face 官方 repo black-forest-labs/FLUX.2-klein-4B（Apache 2.0）
@@ -47,10 +48,11 @@ def main() -> int:
         print("用法：gen-local-klein.py <輸出資料夾> [單字數上限]")
         return 1
     out_dir = Path(sys.argv[1]).expanduser()
-    limit = int(sys.argv[2]) if len(sys.argv) > 2 else None
+    limit = (int(sys.argv[2]) or None) if len(sys.argv) > 2 else None
+    prompts_file = Path(sys.argv[3]).expanduser() if len(sys.argv) > 3 else Path(__file__).parent / "prompts-toeic.json"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    prompts = json.loads((Path(__file__).parent / "prompts-toeic.json").read_text(encoding="utf-8"))
+    prompts = json.loads(prompts_file.read_text(encoding="utf-8"))
     entries = list(prompts.items())[:limit]
     todo = [(w, s) for w, s in entries if not (out_dir / file_name_of(w)).exists()]
     print(f"共 {len(entries)} 字，要產生 {len(todo)} 張，略過 {len(entries) - len(todo)} 張", flush=True)
